@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="admin/tool/datewatch/db" VERSION="20160610" COMMENT="XMLDB file for Moodle admin/tool/datewatch"
+<XMLDB PATH="admin/tool/datewatch/db" VERSION="20160611" COMMENT="XMLDB file for Moodle admin/tool/datewatch"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../../lib/xmldb/xmldb.xsd"
 >
@@ -7,15 +7,34 @@
     <TABLE NAME="tool_datewatch" COMMENT="Registered watchers">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
-        <FIELD NAME="pluginname" TYPE="char" LENGTH="50" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="component" TYPE="char" LENGTH="50" NOTNULL="true" SEQUENCE="false"/>
         <FIELD NAME="tablename" TYPE="char" LENGTH="50" NOTNULL="true" SEQUENCE="false"/>
         <FIELD NAME="fieldname" TYPE="char" LENGTH="50" NOTNULL="true" SEQUENCE="false"/>
-        <FIELD NAME="watchcallback" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false"/>
-        <FIELD NAME="logdescriptioncallback" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
       </KEYS>
+      <INDEXES>
+        <INDEX NAME="component" UNIQUE="false" FIELDS="component"/>
+        <INDEX NAME="tablename" UNIQUE="false" FIELDS="tablename, fieldname"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="tool_datewatch_upcoming" COMMENT="Upcoming dates">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="datewatchid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="tableid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="timestamp" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="notified" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="datewatchid" TYPE="foreign" FIELDS="datewatchid" REFTABLE="tool_datewatch" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="notified-timestamp" UNIQUE="false" FIELDS="notified, timestamp"/>
+        <INDEX NAME="datewatchid-tableid" UNIQUE="true" FIELDS="datewatchid, tableid"/>
+      </INDEXES>
     </TABLE>
   </TABLES>
 </XMLDB>

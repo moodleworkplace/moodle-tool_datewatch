@@ -15,12 +15,20 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * tool_datewatch
+ * Event observer.
  *
- * @package    tool_datewatch
- * @copyright  2016 Marina Glancy
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package   tool_datewatch
+ * @copyright 2016 Marina Glancy
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-$string['pluginname'] = 'Date watcher';
-$string['taskname'] = 'Watch dates';
+defined('MOODLE_INTERNAL') || die();
+
+$observers = array(
+    array(
+        'eventname' => '*',
+        'callback'  => 'tool_datewatch_observer::cachedates',
+        'internal'  => false, // This means that we get events only after transaction commit.
+        'priority'  => 800,
+    ),
+);

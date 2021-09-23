@@ -40,7 +40,7 @@ function tool_datewatch_datewatch(tool_datewatch_manager $manager) {
 
         $manager->watch('user_enrolments', 'timeend')
             ->set_callback(function ($recordid, $datevalue) {
-                mtrace('YEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEESSSSSSSSSSSS ' . $recordid . ' = ' . $datevalue);
+                null;
             });
     }
 }

@@ -68,8 +68,8 @@ final class tool_datewatch_watcher {
         return $this;
     }
 
-    public function set_condition(callable $watchcallback, string $select, array $params = []): self {
-        $this->conditioncallback = $watchcallback;
+    public function set_condition(callable $conditioncallback, string $select, array $params = []): self {
+        $this->conditioncallback = $conditioncallback;
         $this->query = $select;
         $this->params = $params;
         return $this;

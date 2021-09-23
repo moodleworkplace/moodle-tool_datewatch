@@ -155,8 +155,8 @@ class tool_datewatch_manager {
             self::fetch_watchers();
         }
         foreach (self::$watchers as $id => $watcher) {
-            $record = $watcher->to_object();
-            if ($record->tablename === $tablename &&
+            $watcherrecord = $watcher->to_object();
+            if ($watcherrecord->tablename === $tablename &&
                     (!$record || $watcher->watch_callback($record))) {
                 $watchers[$id] = $watcher;
             }

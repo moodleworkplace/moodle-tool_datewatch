@@ -15,39 +15,32 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Contains class tool_datewatch\task\watch
+ * Class generator_test
  *
- * @package   tool_datewatch
- * @copyright 2016 Marina Glancy
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package     tool_datewatch
+ * @group       tool_datewatch
+ * @covers      \tool_datewatch_generator
+ * @copyright   2021 Marina Glancy
  */
-
-namespace tool_datewatch\task;
-
-/**
- * Scheduled task for tool_datewatch
- *
- * @package   tool_datewatch
- * @copyright 2016 Marina Glancy
- */
-class watch extends \core\task\scheduled_task {
+class tool_datewatch_generator_testcase extends advanced_testcase {
 
     /**
-     * Get name.
-     * @return string
+     * Get dynamic rule generator
+     *
+     * @return tool_datewatch_generator
      */
-    public function get_name() {
-        // Shown in admin screens.
-        return get_string('taskname', 'tool_datewatch');
+    protected function get_generator(): tool_datewatch_generator {
+        return $this->getDataGenerator()->get_plugin_generator('tool_datewatch');
     }
 
-    /**
-     * Execute.
-     */
-    public function execute() {
-        // Updating watch list.
-        \tool_datewatch_manager::fetch_watchers(true);
-        // Monitor dates.
-        \tool_datewatch_manager::monitor_upcoming();
+
+    public function test_watchers() {
+        $this->resetAfterTest();
+
+        print_r(tool_datewatch_manager::fetch_watchers());
+
+        //tool_datewatch_manager::fetch_watchers();
+        $a = new \tool_datewatch\task\watch();
+        $a->execute();
     }
 }

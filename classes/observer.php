@@ -1,5 +1,5 @@
 <?php
-// This file is part of Moodle - http://moodle.org/
+// This file is part of the tool_datewatch plugin for Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -40,21 +40,24 @@ class tool_datewatch_observer {
         if ($event->crud !== 'c' && $event->crud !== 'u' && $event->crud !== 'd') {
             return;
         }
-        $tablename = $event->objecttable;
-        $tableid = $event->objectid;
+        $tablename = $event->objecttable ?? '';
+        $tableid = $event->objectid ?? 0;
         self::process_event($event, $tablename, $tableid);
 
         if ($event instanceof \core\event\course_module_created ||
                 $event instanceof \core\event\course_module_updated ||
                 $event instanceof \core\event\course_module_deleted) {
-            $tablename = $event->other['modulename'];
-            $tableid = $event->other['instanceid'];
+            $tablename = (string)$event->other['modulename'];
+            $tableid = (int)$event->other['instanceid'];
             self::process_event($event, $tablename, $tableid);
         }
     }
 
-    protected static function process_event(\core\event\base $event, $tablename, $tableid) {
-        if (tool_datewatch_manager::get_watchers($tablename)) {
+    protected static function process_event(\core\event\base $event, ?string $tablename, ?int $tableid) {
+        if (!$tablename || !$tableid || !in_array($event->crud, ['d', 'u', 'c'])) {
+            return;
+        }
+        if (tool_datewatch_manager::has_watchers($tablename)) {
             if ($event->crud === 'd') {
                 tool_datewatch_manager::delete_upcoming($tablename, $tableid);
             } else {

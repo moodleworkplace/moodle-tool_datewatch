@@ -1,5 +1,4 @@
 <?php
-
 // This file is part of the tool_datewatch plugin for Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -16,17 +15,11 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Date watcher upgrades
+ * tool_datewatch data generator class.
  *
  * @package    tool_datewatch
- * @copyright  2016 Marina Glancy
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @copyright  2021 Marina Glancy
  */
+class tool_datewatch_generator extends component_generator_base {
 
-defined('MOODLE_INTERNAL') || die();
-
-function xmldb_tool_datewatch_upgrade($oldversion) {
-    global $CFG;
-
-    return true;
 }

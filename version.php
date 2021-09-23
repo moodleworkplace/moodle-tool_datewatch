@@ -1,5 +1,5 @@
 <?php
-// This file is part of Moodle - http://moodle.org/
+// This file is part of the tool_datewatch plugin for Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -24,6 +24,8 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version = 2016061000; // The current plugin version (Date: YYYYMMDDXX).
+$plugin->version = 2021092200; // The current plugin version (Date: YYYYMMDDXX).
 $plugin->requires = 2015111000; // Requires this Moodle version.
+$plugin->release = '2.0';
+$plugin->maturity = MATURITY_BETA;
 $plugin->component = 'tool_datewatch'; // Full name of the plugin (used for diagnostics).

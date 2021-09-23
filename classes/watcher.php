@@ -1,5 +1,5 @@
 <?php
-// This file is part of Moodle - http://moodle.org/
+// This file is part of the tool_datewatch plugin for Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -31,70 +31,90 @@ defined('MOODLE_INTERNAL') || die();
  * @copyright 2016 Marina Glancy
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class tool_datewatch_watcher {
+final class tool_datewatch_watcher {
     protected $component;
     protected $tablename;
     protected $fieldname;
     protected $callback;
-    protected $watchcallback;
+    protected $conditioncallback;
     protected $query;
-    protected $params;
-    protected $id;
+    protected $params = [];
+    protected $shortname;
 
-    public function __construct($component, $tablename, $fieldname, $callback,
-            $watchcallback = null, $query = null, $params = null) {
+    public function __construct($component, $tablename, $fieldname, $callback = null,
+            $conditioncallback = null, $query = null, $params = []) {
         $this->component = $component;
         $this->tablename = $tablename;
         $this->fieldname = $fieldname;
         $this->callback = $callback;
-        $this->watchcallback = $watchcallback;
+        $this->conditioncallback = $conditioncallback;
         $this->query = $query;
         $this->params = $params;
     }
 
-    public final function validate($component) {
-        return $this->get_component() === $component && $this->get_component()
-                && $this->get_table_name() && $this->get_field_name();
+    public function set_shortname(string $shortname): self {
+        $this->shortname = $shortname;
+        return $this;
     }
 
-    public final function get_component() {
-        return clean_param($this->component, PARAM_COMPONENT);
+    /**
+     * Register callback that will be called when event occurs
+     *
+     * @param callable $callback accepts parameters (int $objectid, int $timestamp)
+     * @return $this
+     */
+    public function set_callback(callable $callback): self {
+        $this->callback = $callback;
+        return $this;
     }
 
-    public final function get_table_name() {
-        return clean_param($this->tablename, PARAM_ALPHANUMEXT);
+    public function set_condition(callable $watchcallback, string $select, array $params = []): self {
+        $this->conditioncallback = $watchcallback;
+        $this->query = $select;
+        $this->params = $params;
+        return $this;
     }
 
-    public final function get_field_name() {
-        return clean_param($this->fieldname, PARAM_ALPHANUMEXT);
-    }
-
-    public function set_id($id) {
-        $this->id = $id;
-    }
-
-    public final function get_id() {
-        return (int)$this->id;
-    }
-
-    public function get_query() {
-        return $this->query;
-    }
-
-    public function get_params() {
-        return $this->params ?: [];
-    }
-
-    public function watch_callback($record) {
-        if ($this->watchcallback && is_callable($this->watchcallback)) {
-            return call_user_func_array($this->watchcallback, [$record]);
+    public function watch_callback(stdClass $record) {
+        if ($this->conditioncallback && is_callable($this->conditioncallback)) {
+            return call_user_func_array($this->conditioncallback, [$record]);
         }
         return true;
     }
 
-    public function notify($tableid, $timestamp) {
+    /**
+     * Notify callback that the date happened
+     *
+     * @param int $objectid
+     * @param int $timestamp
+     */
+    public function notify(int $objectid, int $timestamp) {
         if ($this->callback && is_callable($this->callback)) {
-            call_user_func_array($this->callback, [$tableid, $timestamp]);
+            call_user_func_array($this->callback, [$objectid, $timestamp]);
         }
     }
+
+    public function to_object(): stdClass {
+        return (object)[
+            'component' => $this->component,
+            'tablename' => $this->tablename,
+            'fieldname' => $this->fieldname,
+            'callback' => $this->callback,
+            'conditioncallback' => $this->conditioncallback,
+            'query' => $this->query,
+            'params' => $this->params,
+            'shortname' => $this->shortname,
+        ];
+    }
+//
+//    public function __unserialize(array $data): void {
+//        $this->component = $data['component'];
+//        $this->tablename = $data['tablename'];
+//        $this->fieldname = $data['fieldname'];
+//        //$this->callback = $data['callback'];
+//        //$this->conditioncallback = $data['conditioncallback'];
+//        $this->query = $data['query'];
+//        $this->params = $data['params'];
+//        $this->shortname = $data['shortname'];
+//    }
 }

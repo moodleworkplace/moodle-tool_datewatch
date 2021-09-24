@@ -131,4 +131,17 @@ final class tool_datewatch_watcher {
         $this->params = $params;
         return $this;
     }
+
+    /**
+     * Convert to string, normally used in error messages about broken watcher definitions
+     *
+     * @return string
+     */
+    public function __toString() {
+        if ($this->shortname) {
+            return $this->component . ' / ' . $this->shortname;
+        } else {
+            return $this->component . ' / ' . $this->tablename . ' / ' . $this->fieldname;
+        }
+    }
 }

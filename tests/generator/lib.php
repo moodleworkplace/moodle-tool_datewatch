@@ -55,6 +55,29 @@ class tool_datewatch_generator extends component_generator_base {
                     self::send_message($uenrol->userid);
                 });
         }
+
+        if (in_array('course_broken_condition', self::$watchers)) {
+            $manager->watch('course', 'startdate')
+                ->set_callback(function() {
+                    null;
+                })
+                ->set_condition('nonexistingfield = :topicsformat', ['topicsformat' => 'topics']);
+        }
+
+        if (in_array('enrol_broken_callback', self::$watchers)) {
+            $manager->watch('user_enrolments', 'timeend')
+                ->set_callback(function ($recordid, $datevalue) {
+                    throw new \coding_exception('Oops');
+                });
+        }
+
+        if (in_array('assign', self::$watchers)) {
+            $manager->watch('assign', 'duedate')
+                ->set_shortname('assignduedate')
+                ->set_callback(function() {
+                    null;
+                });
+        }
     }
 
     /**

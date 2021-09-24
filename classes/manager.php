@@ -146,8 +146,7 @@ class tool_datewatch_manager {
             $DB->execute($sql, $params);
         } catch (Exception $ex) {
             // TODO increase fail count for the watcher or mark it somehow as the faulty one.
-            debugging('ERROR: unable to execute query to retrieve date field from the table: '.
-                $watcher->component . ", " . $watcher->tablename . ", " . $watcher->fieldname,
+            debugging('Invalid condition query defined in the date watcher ' . $watcher,
                 DEBUG_DEVELOPER);
         }
         return $id;
@@ -162,16 +161,6 @@ class tool_datewatch_manager {
         global $DB;
         $DB->execute('DELETE FROM {tool_datewatch_upcoming} WHERE datewatchid = ?', [$dbwatcher->id]);
         $DB->execute('DELETE FROM {tool_datewatch} WHERE id = ?', [$dbwatcher->id]);
-    }
-
-    /**
-     * Does given table have any watchers
-     *
-     * @param string $tablename
-     * @return bool
-     */
-    public static function has_watchers(string $tablename): bool {
-        return (bool)self::get_watchers($tablename);
     }
 
     /**
@@ -211,7 +200,7 @@ class tool_datewatch_manager {
                     return false;
                 }
             } catch (dml_exception $e) {
-                debugging('Invalid condition query defined in the date watcher in '.$watcher->component,
+                debugging('Invalid condition query defined in the date watcher ' . $watcher,
                     DEBUG_DEVELOPER);
                 return false;
             }
@@ -327,7 +316,13 @@ class tool_datewatch_manager {
         foreach ($tonotifys as $tonotify) {
             if (array_key_exists($tonotify->datewatchid, self::$watchers) &&
                     ($callback = self::$watchers[$tonotify->datewatchid]->callback)) {
-                $callback($tonotify->tableid, $tonotify->timestamp);
+                try {
+                    $callback($tonotify->tableid, $tonotify->timestamp);
+                } catch (Throwable $t) {
+                    debugging('Exception calling callback in the date watcher ' .
+                        self::$watchers[$tonotify->datewatchid],
+                     DEBUG_DEVELOPER);
+                }
             }
         }
         list($sqlu, $paramsu) = $DB->get_in_or_equal(array_keys($tonotifys));

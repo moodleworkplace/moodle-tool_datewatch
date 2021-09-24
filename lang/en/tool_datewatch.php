@@ -23,4 +23,4 @@
  */
 
 $string['pluginname'] = 'Date watcher';
-$string['taskname'] = 'Watch dates';
+$string['taskname'] = 'Watch dates in the database and notify watchers';

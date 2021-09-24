@@ -302,4 +302,89 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
         $messages = $sink->get_messages();
         $this->assertCount(0, $messages);
     }
+
+    public function test_watcher_broken_condition() {
+        $this->resetAfterTest();
+
+        // Catching exception when reindexing.
+        $this->get_generator()->register_watcher('course_broken_condition');
+        (new tool_datewatch\task\watch())->execute();
+        $this->assertDebuggingCalled('Invalid condition query defined in the date watcher tool_datewatch / course / startdate');
+        $this->resetDebugging();
+
+        // Catching exception when inserting a record.
+        $course1 = $this->getDataGenerator()->create_course(['format' => 'weeks', 'startdate' => time() + DAYSECS]);
+        $this->assertDebuggingCalled('Invalid condition query defined in the date watcher tool_datewatch / course / startdate');
+        $this->resetDebugging();
+    }
+
+    public function test_watcher_broken_callback() {
+        global $DB;
+        $this->resetAfterTest();
+
+        $this->get_generator()->register_watcher('enrol_broken_callback');
+        (new tool_datewatch\task\watch())->execute();
+
+        // Create a course and enrolment.
+        $course1 = $this->getDataGenerator()->create_course();
+        $user1 = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($user1->id, $course1->id, 'student', 'manual', 0, time() + 5 * DAYSECS);
+        $enrol1 = $DB->get_record_sql('SELECT * FROM {user_enrolments} WHERE userid=? ORDER BY id DESC',
+            [$user1->id], IGNORE_MULTIPLE);
+
+        // Timetravel by 5 days.
+        $delta = 5 * DAYSECS + MINSECS;
+        if (extension_loaded('uopz')) {
+            uopz_set_return('time', time() + $delta);
+        } else {
+            $this->get_generator()->shift_dates('tool_datewatch', 'user_enrolments', $enrol1->id, 'timeend', -$delta);
+        }
+
+        (new tool_datewatch\task\watch())->execute();
+        $this->assertDebuggingCalled('Exception calling callback in the date watcher tool_datewatch / user_enrolments / timeend');
+        $this->resetDebugging();
+    }
+
+    /**
+     * Test watching a date in the course module table 'assign' that does not have its own events
+     */
+    public function test_watch_course_module() {
+        global $DB;
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        $now = time();
+
+        $this->get_generator()->register_watcher('assign');
+        (new tool_datewatch\task\watch())->execute();
+        $datewatch = $DB->get_record('tool_datewatch', ['component' => 'tool_datewatch', 'tablename' => 'assign']);
+        $this->assertNotEmpty($datewatch);
+
+        // Create a course and module, make sure the date is watched.
+        $course1 = $this->getDataGenerator()->create_course();
+        $assign = $this->getDataGenerator()->create_module('assign', ['course' => $course1->id, 'duedate' => $now + 3 * DAYSECS]);
+
+        $upcoming = array_values($DB->get_records('tool_datewatch_upcoming', ['datewatchid' => $datewatch->id]));
+        $this->assertCount(1, $upcoming);
+        $this->assertEquals($now + 3 * DAYSECS, $upcoming[0]->timestamp);
+
+        // Test update module.
+        $formdata = $DB->get_record('course_modules', ['id' => $assign->cmid]);
+        $formdata = (object)((array)$assign + (array)$formdata);
+        $formdata->modulename = 'assign';
+        $formdata->coursemodule = $assign->cmid;
+        $formdata->cmidnumber = $formdata->idnumber;
+        $formdata->introeditor = ['itemid' => 0, 'text' => '', 'format' => FORMAT_HTML];
+
+        $formdata->duedate = $now + 4 * DAYSECS;
+        update_module($formdata);
+
+        $upcoming = array_values($DB->get_records('tool_datewatch_upcoming', ['datewatchid' => $datewatch->id]));
+        $this->assertCount(1, $upcoming);
+        $this->assertEquals($now + 4 * DAYSECS, $upcoming[0]->timestamp);
+
+        // Test delete module.
+        course_delete_module($assign->cmid);
+        $upcoming = array_values($DB->get_records('tool_datewatch_upcoming', ['datewatchid' => $datewatch->id]));
+        $this->assertCount(0, $upcoming);
+    }
 }

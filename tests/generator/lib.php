@@ -116,7 +116,7 @@ class tool_datewatch_generator extends component_generator_base {
         $datewatchid = $DB->get_field_sql('SELECT id FROM {tool_datewatch} WHERE component = ? AND tablename = ? AND fieldname = ?',
             [$component, $table, $field]);
         $DB->execute("UPDATE {".$table."} SET $field = $field + ? WHERE id = ?", [$delta, $objectid]);
-        $DB->execute('UPDATE {tool_datewatch_upcoming} SET timestamp = timestamp + ? WHERE tableid = ? AND datewatchid = ?',
+        $DB->execute('UPDATE {tool_datewatch_upcoming} SET timestamp = timestamp + ? WHERE objectid = ? AND datewatchid = ?',
             [$delta, $objectid, $datewatchid]);
     }
 

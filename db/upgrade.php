@@ -63,5 +63,36 @@ function xmldb_tool_datewatch_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2021092400, 'tool', 'datewatch');
     }
 
+    if ($oldversion < 2021092401) {
+
+        // Define index datewatchid-tableid (unique) to be dropped form tool_datewatch_upcoming.
+        $table = new xmldb_table('tool_datewatch_upcoming');
+        $index = new xmldb_index('datewatchid-tableid', XMLDB_INDEX_UNIQUE, ['datewatchid', 'tableid']);
+
+        // Conditionally launch drop index datewatchid-tableid.
+        if ($dbman->index_exists($table, $index)) {
+            $dbman->drop_index($table, $index);
+        }
+
+        // Rename field tableid on table tool_datewatch_upcoming to objectid.
+        $table = new xmldb_table('tool_datewatch_upcoming');
+        $field = new xmldb_field('tableid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null, 'datewatchid');
+
+        // Launch rename field objectid.
+        $dbman->rename_field($table, $field, 'objectid');
+
+        // Define index datewatchid-objectid (unique) to be added to tool_datewatch_upcoming.
+        $table = new xmldb_table('tool_datewatch_upcoming');
+        $index = new xmldb_index('datewatchid-objectid', XMLDB_INDEX_UNIQUE, ['datewatchid', 'objectid']);
+
+        // Conditionally launch add index datewatchid-objectid.
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Datewatch savepoint reached.
+        upgrade_plugin_savepoint(true, 2021092401, 'tool', 'datewatch');
+    }
+
     return true;
 }

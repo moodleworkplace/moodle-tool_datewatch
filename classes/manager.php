@@ -133,7 +133,7 @@ class tool_datewatch_manager {
                 'tablename' => $watcher->tablename,
                 'fieldname' => $watcher->fieldname,
             ]);
-        $sql = "INSERT INTO {tool_datewatch_upcoming} (datewatchid, tableid, timestamp)
+        $sql = "INSERT INTO {tool_datewatch_upcoming} (datewatchid, objectid, timestamp)
                 SELECT :datewatchid, id, ".$watcher->fieldname." + ".$watcher->offset."
                 FROM {".$watcher->tablename."}
                 WHERE ".$watcher->fieldname." + ".$watcher->offset.">=:now";
@@ -222,8 +222,8 @@ class tool_datewatch_manager {
                 return;
             }
             list($sql, $params) = $DB->get_in_or_equal(array_keys($watchers), SQL_PARAMS_NAMED);
-            $select = 'datewatchid ' . $sql . ' AND tableid = :tableid';
-            $params += ['tableid' => $tableid];
+            $select = 'datewatchid ' . $sql . ' AND objectid = :objectid';
+            $params += ['objectid' => $tableid];
             if ($event->crud === 'd') {
                 $DB->delete_records_select('tool_datewatch_upcoming', $select, $params);
             } else if ($event->crud === 'u' || $event->crud === 'c') {
@@ -249,7 +249,7 @@ class tool_datewatch_manager {
                 $timestamp = (int)$record->{$watcher->fieldname} + $watcher->offset;
                 $upcoming[] = [
                     'datewatchid' => $id,
-                    'tableid' => $record->id,
+                    'objectid' => $record->id,
                     'timestamp' => $timestamp,
                 ];
             }
@@ -270,7 +270,7 @@ class tool_datewatch_manager {
         $todelete = $currentupcoming;
         foreach ($upcoming as $u) {
             foreach ($currentupcoming as $c) {
-                if ($u['tableid'] == $c->tableid && $u['datewatchid'] == $c->datewatchid) {
+                if ($u['objectid'] == $c->objectid && $u['datewatchid'] == $c->datewatchid) {
                     if ($u['timestamp'] != $c->timestamp) {
                         $toupdate[] = [
                             'id' => $c->id,
@@ -317,7 +317,7 @@ class tool_datewatch_manager {
             if (array_key_exists($tonotify->datewatchid, self::$watchers) &&
                     ($callback = self::$watchers[$tonotify->datewatchid]->callback)) {
                 try {
-                    $callback($tonotify->tableid, $tonotify->timestamp);
+                    $callback($tonotify->objectid, $tonotify->timestamp);
                 } catch (Throwable $t) {
                     debugging('Exception calling callback in the date watcher ' .
                         self::$watchers[$tonotify->datewatchid],

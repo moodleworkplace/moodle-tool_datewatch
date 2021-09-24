@@ -5,8 +5,7 @@ The **Datewatch plugin** allows other Moodle plugins to execute a callback every
 For example, plugins can monitor such things as "course enrolment ended", "something is due", etc.
 
 There are two requirements:
-- The watched date has to be a field in a database table (no calculations are supported such as "7 days after" 
-  or table joins)
+- The watched date has to be a field in a database table
 - There are events triggered every time a record is added or updated in the respective database table
   and this event has correct `objecttable` and `objectid` attributes.
   
@@ -37,7 +36,8 @@ $manager->watch('user_enrolments', 'timeend')
     ->set_callback(function($recordid) {
         global $DB;
         if ($record = $DB->get_record('user_enrolments', ['id' => $recordid])) {
-            YOURPLUGINNAME_send_notification_enrollment_ended($record->userid, $record->courseid);
+            $enrol = $DB->get_record('enrol', ['id' => $record->enrolid]);
+            YOURPLUGINNAME_send_notification_enrollment_ended($record->userid, $enrol->courseid);
         }
     });
 ```
@@ -65,4 +65,13 @@ $manager->watch('course', 'startdate')
     ->set_callback(function() {
         // ...
     });    
+```
+
+It is also possible to add an offset to the watched dates. Send notification 3 days before due date:
+
+```
+$manager->watch('assign', 'duedate', - 3 * DAYSECS)
+    ->set_callback(function($assignid) {
+        // ...
+    });
 ```

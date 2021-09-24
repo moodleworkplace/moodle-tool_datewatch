@@ -25,7 +25,7 @@
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="datewatchid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
-        <FIELD NAME="tableid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="objectid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
         <FIELD NAME="timestamp" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false"/>
         <FIELD NAME="notified" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
       </FIELDS>
@@ -35,7 +35,7 @@
       </KEYS>
       <INDEXES>
         <INDEX NAME="notified-timestamp" UNIQUE="false" FIELDS="notified, timestamp"/>
-        <INDEX NAME="datewatchid-tableid" UNIQUE="true" FIELDS="datewatchid, tableid"/>
+        <INDEX NAME="datewatchid-objectid" UNIQUE="true" FIELDS="datewatchid, objectid"/>
       </INDEXES>
     </TABLE>
   </TABLES>

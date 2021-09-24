@@ -124,9 +124,9 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
 
         $upcoming = array_values($DB->get_records('tool_datewatch_upcoming', ['datewatchid' => $datewatch->id], 'id'));
         $this->assertEquals(2, count($upcoming));
-        $expected2 = ['tableid' => $course2->id, 'timestamp' => $now + 2 * DAYSECS, 'notified' => 0];
+        $expected2 = ['objectid' => $course2->id, 'timestamp' => $now + 2 * DAYSECS, 'notified' => 0];
         $this->assertEquals($expected2, array_intersect_key((array)$upcoming[0], $expected2));
-        $expected4 = ['tableid' => $course4->id, 'timestamp' => $now + 10 * DAYSECS, 'notified' => 0];
+        $expected4 = ['objectid' => $course4->id, 'timestamp' => $now + 10 * DAYSECS, 'notified' => 0];
         $this->assertEquals($expected4, array_intersect_key((array)$upcoming[1], $expected4));
 
         // Update course in weekly format. Nothing should change in upcoming table.
@@ -199,7 +199,7 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
 
         $upcoming = array_values($DB->get_records('tool_datewatch_upcoming', ['datewatchid' => $datewatch->id], 'id'));
         $this->assertEquals(1, count($upcoming));
-        $expected1 = ['tableid' => $enrol1->id, 'timestamp' => $now + 18 * DAYSECS, 'notified' => 0];
+        $expected1 = ['objectid' => $enrol1->id, 'timestamp' => $now + 18 * DAYSECS, 'notified' => 0];
         $this->assertEquals($expected1, array_intersect_key((array)$upcoming[0], $expected1));
 
         // Update second enrolment to end in the future.
@@ -208,7 +208,7 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
         $upcoming = array_values($DB->get_records('tool_datewatch_upcoming', ['datewatchid' => $datewatch->id], 'id'));
         $this->assertEquals(2, count($upcoming));
         $this->assertEquals($expected1, array_intersect_key((array)$upcoming[0], $expected1));
-        $expected2 = ['tableid' => $enrol2->id, 'timestamp' => $now + 19 * DAYSECS, 'notified' => 0];
+        $expected2 = ['objectid' => $enrol2->id, 'timestamp' => $now + 19 * DAYSECS, 'notified' => 0];
         $this->assertEquals($expected2, array_intersect_key((array)$upcoming[1], $expected2));
 
         // Update enrolment to end in the past, it will be marked as notified in the 'upcoming' table.
@@ -217,7 +217,7 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
         $upcoming = array_values($DB->get_records('tool_datewatch_upcoming', ['datewatchid' => $datewatch->id], 'id'));
         $this->assertEquals(2, count($upcoming));
         $this->assertEquals($expected1, array_intersect_key((array)$upcoming[0], $expected1));
-        $expected2 = ['tableid' => $enrol2->id, 'timestamp' => $now - 2 * DAYSECS, 'notified' => 1];
+        $expected2 = ['objectid' => $enrol2->id, 'timestamp' => $now - 2 * DAYSECS, 'notified' => 1];
         $this->assertEquals($expected2, array_intersect_key((array)$upcoming[1], $expected2));
 
         // Delete enrolment, the record in 'upcoming' will be deleted too.
@@ -257,9 +257,9 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
 
         $upcoming = array_values($DB->get_records('tool_datewatch_upcoming', ['datewatchid' => $datewatch->id], 'id'));
         $this->assertEquals(2, count($upcoming));
-        $expected1 = ['tableid' => $enrol1->id, 'timestamp' => $now + 2 * DAYSECS, 'notified' => 0];
+        $expected1 = ['objectid' => $enrol1->id, 'timestamp' => $now + 2 * DAYSECS, 'notified' => 0];
         $this->assertEquals($expected1, array_intersect_key((array)$upcoming[0], $expected1));
-        $expected2 = ['tableid' => $enrol2->id, 'timestamp' => $now + 7 * DAYSECS, 'notified' => 0];
+        $expected2 = ['objectid' => $enrol2->id, 'timestamp' => $now + 7 * DAYSECS, 'notified' => 0];
         $this->assertEquals($expected2, array_intersect_key((array)$upcoming[1], $expected2));
 
         // Run cron - no messages, no changes to the upcoming table.
@@ -292,7 +292,7 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
         // Record is marked as notified in the upcoming table.
         $upcoming = array_values($DB->get_records('tool_datewatch_upcoming', ['datewatchid' => $datewatch->id], 'id'));
         $this->assertEquals(2, count($upcoming));
-        $expected1 = ['tableid' => $enrol1->id, 'notified' => 1];
+        $expected1 = ['objectid' => $enrol1->id, 'notified' => 1];
         $this->assertEquals($expected1, array_intersect_key((array)$upcoming[0], $expected1));
         $this->assertEquals($expected2, array_intersect_key((array)$upcoming[1], $expected2));
 

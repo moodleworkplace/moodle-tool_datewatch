@@ -38,8 +38,6 @@ class tool_datewatch_generator_testcase extends advanced_testcase {
         $this->resetAfterTest();
 
         tool_datewatch_manager::fetch_watchers();
-
-        //tool_datewatch_manager::fetch_watchers();
         $a = new \tool_datewatch\task\watch();
         $a->execute();
     }

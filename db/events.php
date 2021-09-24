@@ -27,7 +27,7 @@ defined('MOODLE_INTERNAL') || die();
 $observers = array(
     array(
         'eventname' => '*',
-        'callback'  => 'tool_datewatch_observer::cachedates',
+        'callback'  => 'tool_datewatch_observer::date_changed',
         'internal'  => false, // This means that we get events only after transaction commit.
         'priority'  => 800,
     ),

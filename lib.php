@@ -15,12 +15,12 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * tool_datewatch callbacks.
+ * tool_datewatch callbacks
  *
- * @package     tool_datewatch
- * @copyright   2021 Marina Glancy
+ * @package    tool_datewatch
+ * @copyright  2016 Marina Glancy
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
 
 /**
  * Callback for tool_datewatch (for unittests only)
@@ -34,9 +34,7 @@ function tool_datewatch_datewatch(tool_datewatch_manager $manager) {
             ->set_callback(function() {
                 null;
             })
-            ->set_condition(function($course) {
-                return $course->format === 'topics';
-            }, 'format = :topicsformat', ['topicsformat' => 'topics']);
+            ->set_condition('format = :topicsformat', ['topicsformat' => 'topics']);
 
         $manager->watch('user_enrolments', 'timeend')
             ->set_callback(function ($recordid, $datevalue) {

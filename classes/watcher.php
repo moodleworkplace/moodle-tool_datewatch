@@ -27,31 +27,73 @@ defined('MOODLE_INTERNAL') || die();
 /**
  * Class tool_datewatch_watcher
  *
+ * @property-read string $component
+ * @property-read string $tablename
+ * @property-read string $fieldname
+ * @property-read int $offset
+ * @property-read string $shortname
+ * @property-read string $query
+ * @property-read array $params
+ * @property-read callable $callback
+ *
  * @package   tool_datewatch
  * @copyright 2016 Marina Glancy
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 final class tool_datewatch_watcher {
+    /** @var string */
     protected $component;
+    /** @var string */
     protected $tablename;
+    /** @var string */
     protected $fieldname;
+    /** @var int */
+    protected $offset = 0;
+    /** @var callable */
     protected $callback;
-    protected $conditioncallback;
+    /** @var string */
     protected $query;
+    /** @var array */
     protected $params = [];
+    /** @var string */
     protected $shortname;
 
-    public function __construct($component, $tablename, $fieldname, $callback = null,
-            $conditioncallback = null, $query = null, $params = []) {
+    /**
+     * Constructor
+     *
+     * @param string $component
+     * @param string $tablename
+     * @param string $fieldname
+     * @param int $offset
+     */
+    public function __construct(string $component, string $tablename, string $fieldname, int $offset = 0) {
         $this->component = $component;
         $this->tablename = $tablename;
         $this->fieldname = $fieldname;
-        $this->callback = $callback;
-        $this->conditioncallback = $conditioncallback;
-        $this->query = $query;
-        $this->params = $params;
+        $this->offset = $offset;
     }
 
+    /**
+     * Magic property getter
+     *
+     * @param string $name
+     * @return null
+     */
+    public function __get($name) {
+        if (property_exists($this, $name)) {
+            return $this->$name;
+        }
+        return null;
+    }
+
+    /**
+     * Allows to set a unique shortname to the watcher, this is required if there are several watchers for the same field
+     *
+     * Every time the condition is changed, the shortname has to be updated, this will result in the re-index of the
+     *
+     * @param string $shortname
+     * @return $this
+     */
     public function set_shortname(string $shortname): self {
         $this->shortname = $shortname;
         return $this;
@@ -68,53 +110,25 @@ final class tool_datewatch_watcher {
         return $this;
     }
 
-    public function set_condition(callable $conditioncallback, string $select, array $params = []): self {
-        $this->conditioncallback = $conditioncallback;
+    /**
+     * Adds a condition for the table records that need to be watched
+     *
+     * Adding condition allows to improve performance on how we scan the table initially and how
+     * we monitor individual dates
+     *
+     * Examples of how datewatch retrieves records:
+     *     $DB->get_records('SELECT * FROM {'.$this->tablename.'} WHERE ".$this->select, $this->params);
+     *
+     *     $DB->get_records('SELECT * FROM {'.$this->tablename.'} WHERE id=:objectid AND ".$this->select,
+     *         $this->params + ['objectid' => $objectid]);
+     *
+     * @param string $select SQL expression to be used in a query
+     * @param array $params named parameters for the select
+     * @return $this
+     */
+    public function set_condition(string $select, array $params = []): self {
         $this->query = $select;
         $this->params = $params;
         return $this;
     }
-
-    public function watch_callback(stdClass $record) {
-        if ($this->conditioncallback && is_callable($this->conditioncallback)) {
-            return call_user_func_array($this->conditioncallback, [$record]);
-        }
-        return true;
-    }
-
-    /**
-     * Notify callback that the date happened
-     *
-     * @param int $objectid
-     * @param int $timestamp
-     */
-    public function notify(int $objectid, int $timestamp) {
-        if ($this->callback && is_callable($this->callback)) {
-            call_user_func_array($this->callback, [$objectid, $timestamp]);
-        }
-    }
-
-    public function to_object(): stdClass {
-        return (object)[
-            'component' => $this->component,
-            'tablename' => $this->tablename,
-            'fieldname' => $this->fieldname,
-            'callback' => $this->callback,
-            'conditioncallback' => $this->conditioncallback,
-            'query' => $this->query,
-            'params' => $this->params,
-            'shortname' => $this->shortname,
-        ];
-    }
-//
-//    public function __unserialize(array $data): void {
-//        $this->component = $data['component'];
-//        $this->tablename = $data['tablename'];
-//        $this->fieldname = $data['fieldname'];
-//        //$this->callback = $data['callback'];
-//        //$this->conditioncallback = $data['conditioncallback'];
-//        $this->query = $data['query'];
-//        $this->params = $data['params'];
-//        $this->shortname = $data['shortname'];
-//    }
 }

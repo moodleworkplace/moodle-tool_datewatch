@@ -21,13 +21,6 @@
  * @copyright  2016 Marina Glancy
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
-/**
- *
- * @package    tool_datewatch
- * @copyright  2016 Marina Glancy
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
 class tool_datewatch_manager {
     /** @var tool_datewatch_watcher[] */
     protected static $watchers;
@@ -45,14 +38,30 @@ class tool_datewatch_manager {
         $this->component = $component;
     }
 
-    protected static function get_unique_key(stdClass $data) {
-        if (!empty($data->shortname)) {
-            return $data->component . '/' . $data->shortname;
-        }
-        return $data->component . '/' . $data->tablename . '/' . $data->fieldname;
+    /**
+     * Calculates an unique key for either an exported watcher or a record from the watcher table
+     *
+     * @param tool_datewatch_watcher $watcher
+     * @return string
+     */
+    protected static function get_unique_key(tool_datewatch_watcher $watcher) {
+        return md5($watcher->component .
+            '|' . $watcher->tablename .
+            '|' . $watcher->fieldname .
+            '|' . $watcher->offset .
+            '|' . $watcher->query .
+            '|' . json_encode($watcher->params) .
+            '|' . $watcher->shortname);
     }
 
-    public static function fetch_watchers(bool $unregisteroldwatchers = false) {
+    /**
+     * Get all watchers defined in plugins
+     *
+     * @param bool $unregisteroldwatchers if executed from cron and we also need to reconcile with DB and re-index
+     * @return tool_datewatch_watcher[]
+     * @throws dml_exception
+     */
+    public static function fetch_watchers(bool $unregisteroldwatchers = false): array {
         global $DB;
         $watchers = [];
         $plugins = get_plugins_with_function('datewatch');
@@ -68,7 +77,7 @@ class tool_datewatch_manager {
                 $manager = new self($plugintype . '_' . $pluginname);
                 call_user_func_array($functionname, [$manager]);
                 foreach ($manager->componentwatchers as $watcher) {
-                    $uniquekey = self::get_unique_key($watcher->to_object());
+                    $uniquekey = self::get_unique_key($watcher);
                     $watchers[$uniquekey] = $watcher;
                 }
             }
@@ -83,7 +92,7 @@ class tool_datewatch_manager {
         $dbwatchers = $DB->get_records('tool_datewatch');
         $existing = [];
         foreach ($dbwatchers as $id => $dbwatcher) {
-            $uniquekey = self::get_unique_key($dbwatcher);
+            $uniquekey = $dbwatcher->hash;
             if (isset($watchers[$uniquekey])) {
                 $existing[] = $uniquekey;
                 self::$watchers[$id] = $watchers[$uniquekey];
@@ -92,7 +101,7 @@ class tool_datewatch_manager {
         }
 
         foreach ($watchers as $watcher) {
-            $uniquekey = self::get_unique_key($watcher->to_object());
+            $uniquekey = self::get_unique_key($watcher);
             if (!in_array($uniquekey, $existing)) {
                 $id = self::register_watcher($watcher);
                 self::$watchers[$id] = $watcher;
@@ -108,62 +117,132 @@ class tool_datewatch_manager {
         return self::$watchers;
     }
 
+    /**
+     * Register watcher in the db, re-index the field
+     *
+     * @param tool_datewatch_watcher $watcher
+     * @return int
+     */
     protected static function register_watcher(tool_datewatch_watcher $watcher): int {
         global $DB;
-        $record = $watcher->to_object();
         $id = $DB->insert_record('tool_datewatch',
-            ['component' => $record->component,
-                'tablename' => $record->tablename,
-                'fieldname' => $record->fieldname]);
+            [
+                'hash' => self::get_unique_key($watcher),
+                'component' => $watcher->component,
+                'tablename' => $watcher->tablename,
+                'fieldname' => $watcher->fieldname,
+            ]);
         $sql = "INSERT INTO {tool_datewatch_upcoming} (datewatchid, tableid, timestamp)
-                SELECT :datewatchid, id, ".$record->fieldname."
-                FROM {".$record->tablename."}
-                WHERE ".$record->fieldname.">=:now";
-        $params = $record->params + ['datewatchid' => $id, 'now' => time() - MINSECS];
-        if ($query = $record->query) {
+                SELECT :datewatchid, id, ".$watcher->fieldname." + ".$watcher->offset."
+                FROM {".$watcher->tablename."}
+                WHERE ".$watcher->fieldname." + ".$watcher->offset.">=:now";
+        // TODO why -MINSEC?
+        $params = $watcher->params + ['datewatchid' => $id, 'now' => time() - MINSECS];
+        if ($query = $watcher->query) {
             $sql .= ' AND '.$query;
         }
         try {
             $DB->execute($sql, $params);
         } catch (Exception $ex) {
             // TODO increase fail count for the watcher or mark it somehow as the faulty one.
-            debugging('ERROR: unable to execute query to retrieve date field from the table: '.print_r($watcher, true),
+            debugging('ERROR: unable to execute query to retrieve date field from the table: '.
+                $watcher->component . ", " . $watcher->tablename . ", " . $watcher->fieldname,
                 DEBUG_DEVELOPER);
         }
         return $id;
     }
 
-    protected static function unregister_watcher($dbwatcher) {
+    /**
+     * Unregister watcher from the db
+     *
+     * @param stdClass $dbwatcher
+     */
+    protected static function unregister_watcher(stdClass $dbwatcher) {
         global $DB;
         $DB->execute('DELETE FROM {tool_datewatch_upcoming} WHERE datewatchid = ?', [$dbwatcher->id]);
         $DB->execute('DELETE FROM {tool_datewatch} WHERE id = ?', [$dbwatcher->id]);
     }
 
+    /**
+     * Does given table have any watchers
+     *
+     * @param string $tablename
+     * @return bool
+     */
     public static function has_watchers(string $tablename): bool {
-        return (bool)self::get_watchers($tablename, null);
+        return (bool)self::get_watchers($tablename);
     }
 
     /**
+     * Get watchers for a given table / record
      *
      * @param string $tablename
-     * @param stdClass $record
+     * @param int $tableid id of the record in the table (optional)
      * @return tool_datewatch_watcher[]
      */
-    public static function get_watchers(string $tablename, ?stdClass $record = null): array {
+    public static function get_watchers(string $tablename, ?int $tableid = null): array {
         $watchers = [];
         if (self::$watchers === null) {
             self::fetch_watchers();
         }
         foreach (self::$watchers as $id => $watcher) {
-            $watcherrecord = $watcher->to_object();
-            if ($watcherrecord->tablename === $tablename &&
-                    (!$record || $watcher->watch_callback($record))) {
+            if ($watcher->tablename === $tablename &&
+                    (!$tableid || self::is_table_record_watchable($watcher, $tableid))) {
                 $watchers[$id] = $watcher;
             }
         }
         return $watchers;
     }
 
+    /**
+     * Checks if a record in the table should be watched (using "query" and "params" from the watcher)
+     *
+     * @param tool_datewatch_watcher $watcher
+     * @param int $tableid
+     * @return bool
+     */
+    protected static function is_table_record_watchable(tool_datewatch_watcher $watcher, int $tableid): bool {
+        global $DB;
+        if ($watcher->query) {
+            try {
+                if (!$DB->get_record_select($watcher->tablename, "id = :objectid AND " . $watcher->query,
+                    $watcher->params + ['objectid' => $tableid])) {
+                    return false;
+                }
+            } catch (dml_exception $e) {
+                debugging('Invalid condition query defined in the date watcher in '.$watcher->component,
+                    DEBUG_DEVELOPER);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Caches the upcoming dates modified in the event
+     *
+     * @param \core\event\base $event
+     * @param string|null $tablename
+     * @param int|null $tableid
+     */
+    public static function process_event(\core\event\base $event, ?string $tablename, ?int $tableid) {
+        if ($tablename && $tableid) {
+            if ($event->crud === 'd') {
+                self::delete_upcoming($tablename, $tableid);
+            } else if ($event->crud === 'u') {
+                self::update_upcoming($tablename, $tableid, $event);
+            } else if ($event->crud === 'c') {
+                self::create_upcoming($tablename, $tableid, $event);
+            }
+        }
+    }
+
+    /**
+     * Delete all upcoming dates from the cache table
+     *
+     * @param string $tablename
+     * @param int $tableid
+     */
     public static function delete_upcoming(string $tablename, int $tableid): void {
         global $DB;
         if (!$watchers = self::get_watchers($tablename)) {
@@ -176,43 +255,51 @@ class tool_datewatch_manager {
     }
 
     /**
+     * Adds a watched record in the upcoming table
      *
      * @param string $tablename
-     * @param stdClass $record
+     * @param int $tableid
+     * @param \core\event\base $event
      */
-    public static function create_upcoming(string $tablename, stdClass $record) {
-        self::sync_upcoming([], self::prepare_upcoming($tablename, $record));
+    protected static function create_upcoming(string $tablename, int $tableid, \core\event\base $event) {
+        self::sync_upcoming([], self::prepare_upcoming($tablename, $tableid, $event));
     }
 
     /**
+     * Updates a watched record in the upcoming table
      *
      * @param string $tablename
-     * @param stdClass $record
+     * @param int $tableid
+     * @param \core\event\base $event
      */
-    public static function update_upcoming($tablename, $record) {
+    protected static function update_upcoming(string $tablename, int $tableid, \core\event\base $event) {
         global $DB;
         if (!$watchers = self::get_watchers($tablename)) {
             return;
         }
         list($sql, $params) = $DB->get_in_or_equal(array_keys($watchers));
-        $params[] = $record->id;
+        $params[] = $tableid;
         $currentupcoming = $DB->get_records_select('tool_datewatch_upcoming',
                 'datewatchid ' . $sql . ' AND tableid = ?', $params);
-        self::sync_upcoming($currentupcoming, self::prepare_upcoming($tablename, $record));
+        self::sync_upcoming($currentupcoming, self::prepare_upcoming($tablename, $tableid, $event));
     }
 
     /**
+     * Prepare records to insert into the upcoming table
      *
      * @param string $tablename
-     * @param stdClass $record
+     * @param int $tableid
+     * @param \core\event\base $event
      * @return array[]
      */
-    protected static function prepare_upcoming($tablename, $record) {
-        $watchers = self::get_watchers($tablename, $record);
+    protected static function prepare_upcoming(string $tablename, int $tableid, \core\event\base $event) {
+        $watchers = self::get_watchers($tablename, $tableid);
         $upcoming = [];
+        if (!$watchers || !($record = $event->get_record_snapshot($tablename, $tableid))) {
+            return $upcoming;
+        }
         foreach ($watchers as $id => $watcher) {
-            $watcherexported = $watcher->to_object();
-            $timestamp = $record->{$watcherexported->fieldname};
+            $timestamp = (int)$record->{$watcher->fieldname} + $watcher->offset;
             $upcoming[] = ['datewatchid' => $id,
                             'tableid' => $record->id,
                             'timestamp' => $timestamp];
@@ -220,28 +307,26 @@ class tool_datewatch_manager {
         return $upcoming;
     }
 
-    protected static function is_future_date($timestamp) {
-        return $timestamp > time() - MINSECS;
-    }
-
-
     /**
+     * Synchronises the upcoming dates records that are currently in the DB with the newly calculated ones
      *
-     * @global moodle_database $DB
      * @param stdClass[] $currentupcoming
      * @param array[] $upcoming
      */
-    protected static function sync_upcoming($currentupcoming, $upcoming) {
+    protected static function sync_upcoming(array $currentupcoming, array $upcoming) {
         global $DB;
-        // Find which records ned to be deleted or inserted or updated.
+        // Find which records need to be deleted or inserted or updated.
         $toinsert = $toupdate = [];
         $todelete = $currentupcoming;
         foreach ($upcoming as $u) {
             foreach ($currentupcoming as $c) {
                 if ($u['tableid'] == $c->tableid && $u['datewatchid'] == $c->datewatchid) {
                     if ($u['timestamp'] != $c->timestamp) {
-                        $toupdate[] = ['id' => $c->id, 'timestamp' => $u['timestamp'],
-                            'notified' => self::is_future_date($u['timestamp']) ? 0 : 1];
+                        $toupdate[] = [
+                            'id' => $c->id,
+                            'timestamp' => $u['timestamp'],
+                            'notified' => ($u['timestamp'] > time() - MINSECS) ? 0 : 1,
+                        ];
                     }
                     unset($todelete[$c->id]);
                     continue 2;
@@ -266,6 +351,9 @@ class tool_datewatch_manager {
         }
     }
 
+    /**
+     * Checks if any watched date has happened, execute callback and mark as notified (called from the scheduled task)
+     */
     public static function monitor_upcoming() {
         global $DB;
         $sql = "SELECT *
@@ -276,8 +364,9 @@ class tool_datewatch_manager {
             return;
         }
         foreach ($tonotifys as $tonotify) {
-            if (array_key_exists($tonotify->datewatchid, self::$watchers)) {
-                self::$watchers[$tonotify->datewatchid]->notify($tonotify->tableid, $tonotify->timestamp);
+            if (array_key_exists($tonotify->datewatchid, self::$watchers) &&
+                    ($callback = self::$watchers[$tonotify->datewatchid]->callback)) {
+                $callback($tonotify->tableid, $tonotify->timestamp);
             }
         }
         list($sqlu, $paramsu) = $DB->get_in_or_equal(array_keys($tonotifys));
@@ -289,10 +378,11 @@ class tool_datewatch_manager {
      *
      * @param string $tablename
      * @param string $fieldname
+     * @param int $offset
      * @return tool_datewatch_watcher
      */
-    public function watch(string $tablename, string $fieldname): tool_datewatch_watcher {
-        $watcher = new tool_datewatch_watcher($this->component, $tablename, $fieldname);
+    public function watch(string $tablename, string $fieldname, int $offset = 0): tool_datewatch_watcher {
+        $watcher = new tool_datewatch_watcher($this->component, $tablename, $fieldname, $offset);
         $this->componentwatchers[] = $watcher;
         return $watcher;
     }

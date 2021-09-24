@@ -53,9 +53,7 @@ $manager->watch('course', 'startdate')
             'other' => ['startdate' => $timestamp],
         ])->trigger();
     })
-    ->set_condition(function($course) {
-        return $course->format === 'MYFORMAT';
-    }, 'format = :format', ['format' => 'MYFORMAT']);
+    ->set_condition('format = :format', ['format' => 'MYFORMAT']);
 ```
         
 If the plugin needs to register several watchers for the same field it can assign a unique

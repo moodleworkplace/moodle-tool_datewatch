@@ -309,7 +309,7 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
         // Catching exception when reindexing.
         $this->get_generator()->register_watcher('course_broken_condition');
         (new tool_datewatch\task\watch())->execute();
-        $this->assertDebuggingCalled('Invalid condition query defined in the date watcher tool_datewatch / course / startdate');
+        $this->assertDebuggingCalled('Invalid watcher definition tool_datewatch / course / startdate');
         $this->resetDebugging();
 
         // Catching exception when inserting a record.
@@ -386,5 +386,30 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
         course_delete_module($assign->cmid);
         $upcoming = array_values($DB->get_records('tool_datewatch_upcoming', ['datewatchid' => $datewatch->id]));
         $this->assertCount(0, $upcoming);
+    }
+
+    /**
+     * Datewatch ignores events triggered before first reindexing
+     */
+    public function test_event_before_index() {
+        global $DB;
+        $this->resetAfterTest();
+        $now = time();
+
+        $this->get_generator()->register_watcher('course');
+        $count = $DB->count_records('tool_datewatch_upcoming');
+
+        // Create course.
+        $this->getDataGenerator()->create_course(['format' => 'topics', 'startdate' => $now + 2 * DAYSECS]);
+        // No new records in 'upcoming' table were created.
+        $this->assertEquals($count, $DB->count_records('tool_datewatch_upcoming'));
+
+        // Run index, one new record will be created.
+        (new tool_datewatch\task\watch())->execute();
+        $this->assertEquals($count + 1, $DB->count_records('tool_datewatch_upcoming'));
+
+        // Next course we create will be added to the upcoming table.
+        $this->getDataGenerator()->create_course(['format' => 'topics', 'startdate' => $now + 4 * DAYSECS]);
+        $this->assertEquals($count + 2, $DB->count_records('tool_datewatch_upcoming'));
     }
 }

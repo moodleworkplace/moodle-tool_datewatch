@@ -21,5 +21,100 @@
  * @copyright  2021 Marina Glancy
  */
 class tool_datewatch_generator extends component_generator_base {
+    /** @var array */
+    public static $watchers = [];
 
+    /**
+     * Mock some watchers
+     *
+     * This function is called from {@see tool_datewatch_datewatch()} in lib.php
+     *
+     * @param tool_datewatch_manager $manager
+     */
+    public static function register_watchers(tool_datewatch_manager $manager) {
+        if (in_array('course', self::$watchers)) {
+            $manager->watch('course', 'startdate')
+                ->set_callback(function() {
+                    null;
+                })
+                ->set_condition('format = :topicsformat', ['topicsformat' => 'topics']);
+        }
+
+        if (in_array('user_enrolments', self::$watchers)) {
+            $manager->watch('user_enrolments', 'timeend')
+                ->set_callback(function ($recordid, $datevalue) {
+                    null;
+                });
+        }
+
+        if (in_array('enrolnotification', self::$watchers)) {
+            $manager->watch('user_enrolments', 'timeend', - 3 * DAYSECS)
+                ->set_callback(function ($recordid, $datevalue) {
+                    global $DB;
+                    $uenrol = $DB->get_record('user_enrolments', ['id' => $recordid]);
+                    self::send_message($uenrol->userid);
+                });
+        }
+    }
+
+    /**
+     * Register a watcher for this unittest
+     *
+     * @param string $name specify name of the watcher - {@see self::register_watchers()}
+     */
+    public function register_watcher(string $name) {
+        self::$watchers[] = $name;
+        tool_datewatch_manager::reset_caches();
+    }
+
+    /**
+     * Remove all watchers added in this unittest and clear all caches (to be called from tearDown())
+     */
+    public function remove_watchers() {
+        self::$watchers = [];
+        tool_datewatch_manager::reset_caches();
+        (new tool_datewatch\task\watch())->execute();
+        tool_datewatch_manager::reset_caches();
+    }
+
+    /**
+     * Shift dates in both watched table and upcoming table by $delta seconds
+     *
+     * This function is used if uupz is not installed and we can't "time travel" for testing.
+     *
+     * @param string $component
+     * @param string $table
+     * @param int $objectid
+     * @param string $field
+     * @param int $delta
+     */
+    public function shift_dates(string $component, string $table, int $objectid, string $field, int $delta) {
+        global $DB;
+        $datewatchid = $DB->get_field_sql('SELECT id FROM {tool_datewatch} WHERE component = ? AND tablename = ? AND fieldname = ?',
+            [$component, $table, $field]);
+        $DB->execute("UPDATE {".$table."} SET $field = $field + ? WHERE id = ?", [$delta, $objectid]);
+        $DB->execute('UPDATE {tool_datewatch_upcoming} SET timestamp = timestamp + ? WHERE tableid = ? AND datewatchid = ?',
+            [$delta, $objectid, $datewatchid]);
+    }
+
+    /**
+     * Send a message to a user
+     *
+     * @param int $userid
+     */
+    protected static function send_message(int $userid) {
+        // Any core message will do here.
+        $message = new \core\message\message();
+        $message->component         = 'moodle';
+        $message->name              = 'instantmessage';
+        $message->userfrom          = core_user::get_noreply_user();
+        $message->userto            = core_user::get_user($userid);
+        $message->subject           = 'Your enrolment will end soon';
+        $message->fullmessage       = 'Hello there';
+        $message->fullmessageformat = FORMAT_MARKDOWN;
+        $message->fullmessagehtml   = 'Hello there';
+        $message->notification      = 0;
+
+        message_send($message);
+    }
 }

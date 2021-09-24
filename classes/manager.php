@@ -39,6 +39,13 @@ class tool_datewatch_manager {
     }
 
     /**
+     * Reset caches (to be called from unittests)
+     */
+    public static function reset_caches() {
+        self::$watchers = null;
+    }
+
+    /**
      * Calculates an unique key for either an exported watcher or a record from the watcher table
      *
      * @param tool_datewatch_watcher $watcher
@@ -65,12 +72,6 @@ class tool_datewatch_manager {
         global $DB;
         $watchers = [];
         $plugins = get_plugins_with_function('datewatch');
-
-        if (defined('PHPUNIT_TEST') && PHPUNIT_TEST) {
-            // For unittests also read the tests definitions.
-            $pluginstest = get_plugins_with_function('test_datewatch', 'tests/generator/datewatch.php');
-            $plugins = array_merge_recursive($plugins, $pluginstest);
-        }
 
         foreach ($plugins as $plugintype => $funcs) {
             foreach ($funcs as $pluginname => $functionname) {
@@ -226,62 +227,21 @@ class tool_datewatch_manager {
      * @param int|null $tableid
      */
     public static function process_event(\core\event\base $event, ?string $tablename, ?int $tableid) {
+        global $DB;
         if ($tablename && $tableid) {
+            if (!$watchers = self::get_watchers($tablename)) {
+                return;
+            }
+            list($sql, $params) = $DB->get_in_or_equal(array_keys($watchers), SQL_PARAMS_NAMED);
+            $select = 'datewatchid ' . $sql . ' AND tableid = :tableid';
+            $params += ['tableid' => $tableid];
             if ($event->crud === 'd') {
-                self::delete_upcoming($tablename, $tableid);
-            } else if ($event->crud === 'u') {
-                self::update_upcoming($tablename, $tableid, $event);
-            } else if ($event->crud === 'c') {
-                self::create_upcoming($tablename, $tableid, $event);
+                $DB->delete_records_select('tool_datewatch_upcoming', $select, $params);
+            } else if ($event->crud === 'u' || $event->crud === 'c') {
+                $currentupcoming = $DB->get_records_select('tool_datewatch_upcoming', $select, $params);
+                self::sync_upcoming($currentupcoming, self::prepare_upcoming($tablename, $tableid, $event));
             }
         }
-    }
-
-    /**
-     * Delete all upcoming dates from the cache table
-     *
-     * @param string $tablename
-     * @param int $tableid
-     */
-    public static function delete_upcoming(string $tablename, int $tableid): void {
-        global $DB;
-        if (!$watchers = self::get_watchers($tablename)) {
-            return;
-        }
-        list($sql, $params) = $DB->get_in_or_equal(array_keys($watchers));
-        $params[] = $tableid;
-        $DB->delete_records_select('tool_datewatch_upcoming',
-                'datewatchid ' . $sql . ' AND tableid = ?', $params);
-    }
-
-    /**
-     * Adds a watched record in the upcoming table
-     *
-     * @param string $tablename
-     * @param int $tableid
-     * @param \core\event\base $event
-     */
-    protected static function create_upcoming(string $tablename, int $tableid, \core\event\base $event) {
-        self::sync_upcoming([], self::prepare_upcoming($tablename, $tableid, $event));
-    }
-
-    /**
-     * Updates a watched record in the upcoming table
-     *
-     * @param string $tablename
-     * @param int $tableid
-     * @param \core\event\base $event
-     */
-    protected static function update_upcoming(string $tablename, int $tableid, \core\event\base $event) {
-        global $DB;
-        if (!$watchers = self::get_watchers($tablename)) {
-            return;
-        }
-        list($sql, $params) = $DB->get_in_or_equal(array_keys($watchers));
-        $params[] = $tableid;
-        $currentupcoming = $DB->get_records_select('tool_datewatch_upcoming',
-                'datewatchid ' . $sql . ' AND tableid = ?', $params);
-        self::sync_upcoming($currentupcoming, self::prepare_upcoming($tablename, $tableid, $event));
     }
 
     /**
@@ -293,16 +253,17 @@ class tool_datewatch_manager {
      * @return array[]
      */
     protected static function prepare_upcoming(string $tablename, int $tableid, \core\event\base $event) {
-        $watchers = self::get_watchers($tablename, $tableid);
         $upcoming = [];
-        if (!$watchers || !($record = $event->get_record_snapshot($tablename, $tableid))) {
-            return $upcoming;
-        }
-        foreach ($watchers as $id => $watcher) {
-            $timestamp = (int)$record->{$watcher->fieldname} + $watcher->offset;
-            $upcoming[] = ['datewatchid' => $id,
-                            'tableid' => $record->id,
-                            'timestamp' => $timestamp];
+        if (($watchers = self::get_watchers($tablename, $tableid)) &&
+                ($record = $event->get_record_snapshot($tablename, $tableid))) {
+            foreach ($watchers as $id => $watcher) {
+                $timestamp = (int)$record->{$watcher->fieldname} + $watcher->offset;
+                $upcoming[] = [
+                    'datewatchid' => $id,
+                    'tableid' => $record->id,
+                    'timestamp' => $timestamp,
+                ];
+            }
         }
         return $upcoming;
     }
@@ -340,7 +301,7 @@ class tool_datewatch_manager {
         }
         if ($toinsert) {
             $toinsert = array_filter($toinsert, function($element) {
-                return tool_datewatch_manager::is_future_date($element['timestamp']);
+                return $element['timestamp'] > time() - MINSECS;
             });
             if ($toinsert) {
                 $DB->insert_records('tool_datewatch_upcoming', $toinsert);

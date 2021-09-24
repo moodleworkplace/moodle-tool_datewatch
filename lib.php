@@ -28,17 +28,8 @@
  * @param tool_datewatch_manager $manager
  */
 function tool_datewatch_datewatch(tool_datewatch_manager $manager) {
-    if (defined('PHPUNIT_TEST') && PHPUNIT_TEST) {
-        // For unittests only. BE CAREFUL WHEN COPYING.
-        $manager->watch('course', 'startdate')
-            ->set_callback(function() {
-                null;
-            })
-            ->set_condition('format = :topicsformat', ['topicsformat' => 'topics']);
-
-        $manager->watch('user_enrolments', 'timeend')
-            ->set_callback(function ($recordid, $datevalue) {
-                null;
-            });
+    if (defined('PHPUNIT_TEST') && PHPUNIT_TEST && class_exists('tool_datewatch_generator')) {
+        // Register watchers for unittests only.
+        tool_datewatch_generator::register_watchers($manager);
     }
 }

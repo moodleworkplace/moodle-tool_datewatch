@@ -216,7 +216,11 @@ class tool_datewatch_manager {
             $select = 'datewatchid ' . $sql . ' AND objectid = :objectid';
             $params += ['objectid' => $tableid];
             if ($event->crud === 'd') {
-                $DB->delete_records_select('tool_datewatch_upcoming', $select, $params);
+                if (!$DB->record_exists($tablename, ['id' => $tableid])) {
+                    // Check the record was actually deleted, some events like 'course_content_deleted'
+                    // may be triggered when the record is still present.
+                    $DB->delete_records_select('tool_datewatch_upcoming', $select, $params);
+                }
             } else if ($event->crud === 'u' || $event->crud === 'c') {
                 $currentupcoming = $DB->get_records_select('tool_datewatch_upcoming', $select, $params);
                 self::sync_upcoming($currentupcoming, self::prepare_upcoming($tablename, $tableid, $event));

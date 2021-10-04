@@ -21,9 +21,6 @@
  * @property-read string $tablename
  * @property-read string $fieldname
  * @property-read int $offset
- * @property-read string $shortname
- * @property-read string $query
- * @property-read array $params
  * @property-read callable $callback
  *
  * @package   tool_datewatch
@@ -41,12 +38,6 @@ final class tool_datewatch_watcher {
     protected $offset = 0;
     /** @var callable */
     protected $callback;
-    /** @var string */
-    protected $query;
-    /** @var array */
-    protected $params = [];
-    /** @var string */
-    protected $shortname;
 
     /**
      * Constructor
@@ -73,20 +64,8 @@ final class tool_datewatch_watcher {
         if (property_exists($this, $name)) {
             return $this->$name;
         }
+        debugging('Property '.$name.' does not exist', DEBUG_DEVELOPER);
         return null;
-    }
-
-    /**
-     * Allows to set a unique shortname to the watcher, this is required if there are several watchers for the same field
-     *
-     * Every time the condition is changed, the shortname has to be updated, this will result in the re-index of the
-     *
-     * @param string $shortname
-     * @return $this
-     */
-    public function set_shortname(string $shortname): self {
-        $this->shortname = $shortname;
-        return $this;
     }
 
     /**
@@ -101,37 +80,11 @@ final class tool_datewatch_watcher {
     }
 
     /**
-     * Adds a condition for the table records that need to be watched
-     *
-     * Adding condition allows to improve performance on how we scan the table initially and how
-     * we monitor individual dates
-     *
-     * Examples of how datewatch retrieves records:
-     *     $DB->get_records('SELECT * FROM {'.$this->tablename.'} WHERE ".$this->select, $this->params);
-     *
-     *     $DB->get_records('SELECT * FROM {'.$this->tablename.'} WHERE id=:objectid AND ".$this->select,
-     *         $this->params + ['objectid' => $objectid]);
-     *
-     * @param string $select SQL expression to be used in a query
-     * @param array $params named parameters for the select
-     * @return $this
-     */
-    public function set_condition(string $select, array $params = []): self {
-        $this->query = $select;
-        $this->params = $params;
-        return $this;
-    }
-
-    /**
      * Convert to string, normally used in error messages about broken watcher definitions
      *
      * @return string
      */
     public function __toString() {
-        if ($this->shortname) {
-            return $this->component . ' / ' . $this->shortname;
-        } else {
-            return $this->component . ' / ' . $this->tablename . ' / ' . $this->fieldname;
-        }
+        return $this->component . ' / ' . $this->tablename . ' / ' . $this->fieldname;
     }
 }

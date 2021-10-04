@@ -36,8 +36,7 @@ class tool_datewatch_generator extends component_generator_base {
             $manager->watch('course', 'startdate')
                 ->set_callback(function() {
                     null;
-                })
-                ->set_condition('format = :topicsformat', ['topicsformat' => 'topics']);
+                });
         }
 
         if (in_array('user_enrolments', self::$watchers)) {
@@ -56,12 +55,11 @@ class tool_datewatch_generator extends component_generator_base {
                 });
         }
 
-        if (in_array('course_broken_condition', self::$watchers)) {
-            $manager->watch('course', 'startdate')
+        if (in_array('broken', self::$watchers)) {
+            $manager->watch('course', 'nonexistingfield')
                 ->set_callback(function() {
                     null;
-                })
-                ->set_condition('nonexistingfield = :topicsformat', ['topicsformat' => 'topics']);
+                });
         }
 
         if (in_array('enrol_broken_callback', self::$watchers)) {
@@ -73,7 +71,6 @@ class tool_datewatch_generator extends component_generator_base {
 
         if (in_array('assign', self::$watchers)) {
             $manager->watch('assign', 'duedate')
-                ->set_shortname('assignduedate')
                 ->set_callback(function() {
                     null;
                 });
@@ -116,7 +113,7 @@ class tool_datewatch_generator extends component_generator_base {
         $datewatchid = $DB->get_field_sql('SELECT id FROM {tool_datewatch} WHERE component = ? AND tablename = ? AND fieldname = ?',
             [$component, $table, $field]);
         $DB->execute("UPDATE {".$table."} SET $field = $field + ? WHERE id = ?", [$delta, $objectid]);
-        $DB->execute('UPDATE {tool_datewatch_upcoming} SET timestamp = timestamp + ? WHERE objectid = ? AND datewatchid = ?',
+        $DB->execute('UPDATE {tool_datewatch_upcoming} SET value = value + ? WHERE objectid = ? AND datewatchid = ?',
             [$delta, $objectid, $datewatchid]);
     }
 

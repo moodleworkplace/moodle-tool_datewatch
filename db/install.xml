@@ -4,37 +4,34 @@
     xsi:noNamespaceSchemaLocation="../../../../lib/xmldb/xmldb.xsd"
 >
   <TABLES>
-    <TABLE NAME="tool_datewatch" COMMENT="Registered watchers">
+    <TABLE NAME="tool_datewatch" COMMENT="List of indexed fields">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
-        <FIELD NAME="hash" TYPE="char" LENGTH="32" NOTNULL="true" SEQUENCE="false"/>
-        <FIELD NAME="component" TYPE="char" LENGTH="50" NOTNULL="true" SEQUENCE="false"/>
         <FIELD NAME="tablename" TYPE="char" LENGTH="50" NOTNULL="true" SEQUENCE="false"/>
         <FIELD NAME="fieldname" TYPE="char" LENGTH="50" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="maxoffset" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="lastcheck" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
       </KEYS>
       <INDEXES>
-        <INDEX NAME="component" UNIQUE="false" FIELDS="component"/>
         <INDEX NAME="tablename" UNIQUE="false" FIELDS="tablename, fieldname"/>
-        <INDEX NAME="hash" UNIQUE="true" FIELDS="hash"/>
       </INDEXES>
     </TABLE>
     <TABLE NAME="tool_datewatch_upcoming" COMMENT="Upcoming dates">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="datewatchid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
-        <FIELD NAME="objectid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
-        <FIELD NAME="timestamp" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false"/>
-        <FIELD NAME="notified" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="objectid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="id in the respective table"/>
+        <FIELD NAME="value" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="value of the field (timestamp)"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
         <KEY NAME="datewatchid" TYPE="foreign" FIELDS="datewatchid" REFTABLE="tool_datewatch" REFFIELDS="id"/>
       </KEYS>
       <INDEXES>
-        <INDEX NAME="notified-timestamp" UNIQUE="false" FIELDS="notified, timestamp"/>
+        <INDEX NAME="value" UNIQUE="false" FIELDS="datewatchid, value"/>
         <INDEX NAME="datewatchid-objectid" UNIQUE="true" FIELDS="datewatchid, objectid"/>
       </INDEXES>
     </TABLE>

@@ -35,63 +35,69 @@ function xmldb_tool_datewatch_upgrade($oldversion) {
 
     $dbman = $DB->get_manager();
 
-    if ($oldversion < 2021092400) {
+    if ($oldversion < 2021100100) {
 
-        // Database and code have changed significantly. Force re-indexing of everything.
-        $DB->delete_records('tool_datewatch');
-        $DB->delete_records('tool_datewatch_upcoming');
+        // Define table tool_datewatch_upcoming to be dropped.
+        $table = new xmldb_table('tool_datewatch_upcoming');
 
-        // Define field hash to be added to tool_datewatch.
-        $table = new xmldb_table('tool_datewatch');
-        $field = new xmldb_field('hash', XMLDB_TYPE_CHAR, '32', null, XMLDB_NOTNULL, null, null, 'id');
-
-        // Conditionally launch add field hash.
-        if (!$dbman->field_exists($table, $field)) {
-            $dbman->add_field($table, $field);
+        // Conditionally launch drop table for tool_datewatch_upcoming.
+        if ($dbman->table_exists($table)) {
+            $dbman->drop_table($table);
         }
 
-        // Define index hash (unique) to be added to tool_datewatch.
+        // Define table tool_datewatch to be dropped.
         $table = new xmldb_table('tool_datewatch');
-        $index = new xmldb_index('hash', XMLDB_INDEX_UNIQUE, ['hash']);
 
-        // Conditionally launch add index hash.
-        if (!$dbman->index_exists($table, $index)) {
-            $dbman->add_index($table, $index);
+        // Conditionally launch drop table for tool_datewatch.
+        if ($dbman->table_exists($table)) {
+            $dbman->drop_table($table);
+        }
+
+        // Define table tool_datewatch to be created.
+        $table = new xmldb_table('tool_datewatch');
+
+        // Adding fields to table tool_datewatch.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('tablename', XMLDB_TYPE_CHAR, '50', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('fieldname', XMLDB_TYPE_CHAR, '50', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('maxoffset', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('lastcheck', XMLDB_TYPE_INTEGER, '10', null, null, null, null);
+
+        // Adding keys to table tool_datewatch.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+
+        // Adding indexes to table tool_datewatch.
+        $table->add_index('tablename', XMLDB_INDEX_NOTUNIQUE, ['tablename', 'fieldname']);
+
+        // Conditionally launch create table for tool_datewatch.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Define table tool_datewatch_upcoming to be created.
+        $table = new xmldb_table('tool_datewatch_upcoming');
+
+        // Adding fields to table tool_datewatch_upcoming.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('datewatchid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('objectid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('value', XMLDB_TYPE_INTEGER, '10', null, null, null, null);
+
+        // Adding keys to table tool_datewatch_upcoming.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('datewatchid', XMLDB_KEY_FOREIGN, ['datewatchid'], 'tool_datewatch', ['id']);
+
+        // Adding indexes to table tool_datewatch_upcoming.
+        $table->add_index('value', XMLDB_INDEX_NOTUNIQUE, ['datewatchid', 'value']);
+        $table->add_index('datewatchid-objectid', XMLDB_INDEX_UNIQUE, ['datewatchid', 'objectid']);
+
+        // Conditionally launch create table for tool_datewatch_upcoming.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
         }
 
         // Datewatch savepoint reached.
-        upgrade_plugin_savepoint(true, 2021092400, 'tool', 'datewatch');
-    }
-
-    if ($oldversion < 2021092401) {
-
-        // Define index datewatchid-tableid (unique) to be dropped form tool_datewatch_upcoming.
-        $table = new xmldb_table('tool_datewatch_upcoming');
-        $index = new xmldb_index('datewatchid-tableid', XMLDB_INDEX_UNIQUE, ['datewatchid', 'tableid']);
-
-        // Conditionally launch drop index datewatchid-tableid.
-        if ($dbman->index_exists($table, $index)) {
-            $dbman->drop_index($table, $index);
-        }
-
-        // Rename field tableid on table tool_datewatch_upcoming to objectid.
-        $table = new xmldb_table('tool_datewatch_upcoming');
-        $field = new xmldb_field('tableid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null, 'datewatchid');
-
-        // Launch rename field objectid.
-        $dbman->rename_field($table, $field, 'objectid');
-
-        // Define index datewatchid-objectid (unique) to be added to tool_datewatch_upcoming.
-        $table = new xmldb_table('tool_datewatch_upcoming');
-        $index = new xmldb_index('datewatchid-objectid', XMLDB_INDEX_UNIQUE, ['datewatchid', 'objectid']);
-
-        // Conditionally launch add index datewatchid-objectid.
-        if (!$dbman->index_exists($table, $index)) {
-            $dbman->add_index($table, $index);
-        }
-
-        // Datewatch savepoint reached.
-        upgrade_plugin_savepoint(true, 2021092401, 'tool', 'datewatch');
+        upgrade_plugin_savepoint(true, 2021100100, 'tool', 'datewatch');
     }
 
     return true;

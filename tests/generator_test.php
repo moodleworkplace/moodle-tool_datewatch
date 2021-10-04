@@ -45,12 +45,12 @@ class tool_datewatch_generator_testcase extends advanced_testcase {
     public function test_register_watchers() {
         global $DB;
         (new tool_datewatch\task\watch())->execute();
-        $this->assertEmpty($DB->get_records('tool_datewatch', ['component' => 'tool_datewatch']));
         $this->get_generator()->register_watcher('course');
         (new tool_datewatch\task\watch())->execute();
-        $this->assertCount(1, $DB->get_records('tool_datewatch', ['component' => 'tool_datewatch']));
+        $this->assertCount(1, $DB->get_records('tool_datewatch', ['tablename' => 'course', 'fieldname' => 'startdate']));
         $this->get_generator()->register_watcher('user_enrolments');
         (new tool_datewatch\task\watch())->execute();
-        $this->assertCount(2, $DB->get_records('tool_datewatch', ['component' => 'tool_datewatch']));
+        $this->assertCount(1, $DB->get_records('tool_datewatch', ['tablename' => 'course', 'fieldname' => 'startdate']));
+        $this->assertCount(1, $DB->get_records('tool_datewatch', ['tablename' => 'user_enrolments', 'fieldname' => 'timeend']));
     }
 }

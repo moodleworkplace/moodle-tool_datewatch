@@ -58,10 +58,10 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
         $now = time();
 
         // Create courses and enrolments.
-        $course1 = $this->getDataGenerator()->create_course(['format' => 'weeks', 'startdate' => $now + DAYSECS]);
-        $course2 = $this->getDataGenerator()->create_course(['format' => 'topics', 'startdate' => $now + 2 * DAYSECS]);
-        $course3 = $this->getDataGenerator()->create_course(['format' => 'topics', 'startdate' => $now - 2 * DAYSECS]);
-        $course4 = $this->getDataGenerator()->create_course(['format' => 'topics', 'startdate' => $now + 10 * DAYSECS]);
+        $course1 = $this->getDataGenerator()->create_course();
+        $course2 = $this->getDataGenerator()->create_course(['startdate' => $now + 2 * DAYSECS]);
+        $course3 = $this->getDataGenerator()->create_course(['startdate' => $now - 2 * DAYSECS]);
+        $course4 = $this->getDataGenerator()->create_course(['startdate' => $now + 10 * DAYSECS]);
         $user1 = $this->getDataGenerator()->create_user();
         $user2 = $this->getDataGenerator()->create_user();
         $user3 = $this->getDataGenerator()->create_user();
@@ -74,10 +74,6 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
         // Enrolment that ends soon (no notification since it's less than 3 days in advance).
         $this->getDataGenerator()->enrol_user($user3->id, $course2->id, 'student', 'manual', 0, $now + 2 * DAYSECS);
 
-        // There are no watchers yet.
-        $datewatch = $DB->get_records('tool_datewatch', ['component' => 'tool_datewatch']);
-        $this->assertEmpty($datewatch);
-
         // Register watcher and run scheduled task, the courses and enrolments should be indexed.
         $this->get_generator()->register_watcher('course');
         $this->get_generator()->register_watcher('user_enrolments');
@@ -85,16 +81,14 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
         (new tool_datewatch\task\watch())->execute();
 
         // Get the watchers ids from the db so we can query the upcoming table.
-        [$coursewatcher, $enrolwatcher, $notifywatcher] =
-            $DB->get_fieldset_sql('SELECT id from {tool_datewatch} WHERE component=? ORDER BY id', ['tool_datewatch']);
+        [$enrolwatcher, $coursewatcher] =
+            $DB->get_fieldset_sql('SELECT id from {tool_datewatch} ORDER BY id DESC LIMIT 2');
 
         // Assert the records in the upcoming table correspond to the courses and enrolments we have created.
         $this->assertEqualsCanonicalizing([$now + 2 * DAYSECS, $now + 10 * DAYSECS],
-            $DB->get_fieldset_select('tool_datewatch_upcoming', 'timestamp', 'datewatchid=?', [$coursewatcher]));
+            $DB->get_fieldset_select('tool_datewatch_upcoming', 'value', 'datewatchid=?', [$coursewatcher]));
         $this->assertEqualsCanonicalizing([$now + 21 * DAYSECS, $now + 22 * DAYSECS, $now + 2 * DAYSECS],
-            $DB->get_fieldset_select('tool_datewatch_upcoming', 'timestamp', 'datewatchid=?', [$enrolwatcher]));
-        $this->assertEqualsCanonicalizing([$now + 18 * DAYSECS, $now + 19 * DAYSECS],
-            $DB->get_fieldset_select('tool_datewatch_upcoming', 'timestamp', 'datewatchid=?', [$notifywatcher]));
+            $DB->get_fieldset_select('tool_datewatch_upcoming', 'value', 'datewatchid=?', [$enrolwatcher]));
     }
 
     /**
@@ -112,52 +106,41 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
 
         // Make sure the watcher for the course start date is created.
         $datewatch = $DB->get_record('tool_datewatch',
-            ['component' => 'tool_datewatch', 'tablename' => 'course', 'fieldname' => 'startdate']);
+            ['tablename' => 'course', 'fieldname' => 'startdate']);
         $this->assertNotEmpty($datewatch);
 
-        // Create three courses. Make sure only course in 'topics' format that has start date in the future is
+        // Create three courses. Make sure only course that has start date in the future is
         // registered in the 'upcoming' table.
-        $course1 = $this->getDataGenerator()->create_course(['format' => 'weeks', 'startdate' => $now + DAYSECS]);
         $course2 = $this->getDataGenerator()->create_course(['format' => 'topics', 'startdate' => $now + 2 * DAYSECS]);
         $course3 = $this->getDataGenerator()->create_course(['format' => 'topics', 'startdate' => $now - 2 * DAYSECS]);
         $course4 = $this->getDataGenerator()->create_course(['format' => 'topics', 'startdate' => $now + 10 * DAYSECS]);
 
         $upcoming = array_values($DB->get_records('tool_datewatch_upcoming', ['datewatchid' => $datewatch->id], 'id'));
         $this->assertEquals(2, count($upcoming));
-        $expected2 = ['objectid' => $course2->id, 'timestamp' => $now + 2 * DAYSECS, 'notified' => 0];
+        $expected2 = ['objectid' => $course2->id, 'value' => $now + 2 * DAYSECS];
         $this->assertEquals($expected2, array_intersect_key((array)$upcoming[0], $expected2));
-        $expected4 = ['objectid' => $course4->id, 'timestamp' => $now + 10 * DAYSECS, 'notified' => 0];
+        $expected4 = ['objectid' => $course4->id, 'value' => $now + 10 * DAYSECS];
         $this->assertEquals($expected4, array_intersect_key((array)$upcoming[1], $expected4));
 
-        // Update course in weekly format. Nothing should change in upcoming table.
-        update_course((object)['id' => $course1->id, 'startdate' => $now + 7 * DAYSECS]);
-        $upcoming = array_values($DB->get_records('tool_datewatch_upcoming', ['datewatchid' => $datewatch->id], 'id'));
-        $this->assertEquals(2, count($upcoming));
-        $this->assertEquals($expected2, array_intersect_key((array)$upcoming[0], $expected2));
-        $this->assertEquals($expected4, array_intersect_key((array)$upcoming[1], $expected4));
-
-        // Update course in topics format. The upcoming table should be updated respectfully.
+        // Update course. The upcoming table should be updated respectfully.
         update_course((object)['id' => $course2->id, 'startdate' => $now + 5 * DAYSECS]);
-        $expected2['timestamp'] = $now + 5 * DAYSECS;
+        $expected2['value'] = $now + 5 * DAYSECS;
         $upcoming = array_values($DB->get_records('tool_datewatch_upcoming', ['datewatchid' => $datewatch->id], 'id'));
         $this->assertEquals(2, count($upcoming));
         $this->assertEquals($expected2, array_intersect_key((array)$upcoming[0], $expected2));
         $this->assertEquals($expected4, array_intersect_key((array)$upcoming[1], $expected4));
 
-        // Update course and set the startdate in the past. The respective upcoming will be marked as notified.
+        // Update course and set the startdate in the past. The respective upcoming will be removed.
         update_course((object)['id' => $course2->id, 'startdate' => $now - 5 * DAYSECS]);
-        $expected2['timestamp'] = $now - 5 * DAYSECS;
-        $expected2['notified'] = 1;
+        $expected2['value'] = $now - 5 * DAYSECS;
         $upcoming = array_values($DB->get_records('tool_datewatch_upcoming', ['datewatchid' => $datewatch->id], 'id'));
-        $this->assertEquals(2, count($upcoming));
-        $this->assertEquals($expected2, array_intersect_key((array)$upcoming[0], $expected2));
-        $this->assertEquals($expected4, array_intersect_key((array)$upcoming[1], $expected4));
+        $this->assertEquals(1, count($upcoming));
+        $this->assertEquals($expected4, array_intersect_key((array)$upcoming[0], $expected4));
 
         // Delete a course. The respective upcoming will be deleted.
         delete_course($course4->id, false);
         $upcoming = array_values($DB->get_records('tool_datewatch_upcoming', ['datewatchid' => $datewatch->id], 'id'));
-        $this->assertEquals(1, count($upcoming));
-        $this->assertEquals($expected2, array_intersect_key((array)$upcoming[0], $expected4));
+        $this->assertEquals(0, count($upcoming));
     }
 
     /**
@@ -176,7 +159,7 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
 
         // Make sure the watcher for the course start date is created, there is nothing yet in upcoming table.
         $datewatch = $DB->get_record('tool_datewatch',
-            ['component' => 'tool_datewatch', 'tablename' => 'user_enrolments']);
+            ['tablename' => 'user_enrolments']);
         $this->assertNotEmpty($datewatch);
         $upcoming = array_values($DB->get_records('tool_datewatch_upcoming', ['datewatchid' => $datewatch->id], 'id'));
         $this->assertEmpty($upcoming);
@@ -199,7 +182,7 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
 
         $upcoming = array_values($DB->get_records('tool_datewatch_upcoming', ['datewatchid' => $datewatch->id], 'id'));
         $this->assertEquals(1, count($upcoming));
-        $expected1 = ['objectid' => $enrol1->id, 'timestamp' => $now + 18 * DAYSECS, 'notified' => 0];
+        $expected1 = ['objectid' => $enrol1->id, 'value' => $now + 21 * DAYSECS];
         $this->assertEquals($expected1, array_intersect_key((array)$upcoming[0], $expected1));
 
         // Update second enrolment to end in the future.
@@ -208,24 +191,21 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
         $upcoming = array_values($DB->get_records('tool_datewatch_upcoming', ['datewatchid' => $datewatch->id], 'id'));
         $this->assertEquals(2, count($upcoming));
         $this->assertEquals($expected1, array_intersect_key((array)$upcoming[0], $expected1));
-        $expected2 = ['objectid' => $enrol2->id, 'timestamp' => $now + 19 * DAYSECS, 'notified' => 0];
+        $expected2 = ['objectid' => $enrol2->id, 'value' => $now + 22 * DAYSECS];
         $this->assertEquals($expected2, array_intersect_key((array)$upcoming[1], $expected2));
 
-        // Update enrolment to end in the past, it will be marked as notified in the 'upcoming' table.
+        // Update enrolment to end in the past, it will be removed from the 'upcoming' table.
         $manplugin->update_user_enrol($manual1, $user2->id, null, null, $now + 1 * DAYSECS);
 
         $upcoming = array_values($DB->get_records('tool_datewatch_upcoming', ['datewatchid' => $datewatch->id], 'id'));
-        $this->assertEquals(2, count($upcoming));
+        $this->assertEquals(1, count($upcoming));
         $this->assertEquals($expected1, array_intersect_key((array)$upcoming[0], $expected1));
-        $expected2 = ['objectid' => $enrol2->id, 'timestamp' => $now - 2 * DAYSECS, 'notified' => 1];
-        $this->assertEquals($expected2, array_intersect_key((array)$upcoming[1], $expected2));
 
         // Delete enrolment, the record in 'upcoming' will be deleted too.
         $manplugin->unenrol_user($manual1, $user1->id);
 
         $upcoming = array_values($DB->get_records('tool_datewatch_upcoming', ['datewatchid' => $datewatch->id], 'id'));
-        $this->assertEquals(1, count($upcoming));
-        $this->assertEquals($expected2, array_intersect_key((array)$upcoming[0], $expected2));
+        $this->assertEquals(0, count($upcoming));
     }
 
     /**
@@ -241,25 +221,30 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
 
         // Make sure the watcher for the course start date is created.
         $datewatch = $DB->get_record('tool_datewatch',
-            ['component' => 'tool_datewatch', 'tablename' => 'user_enrolments']);
+            ['tablename' => 'user_enrolments', 'fieldname' => 'timeend']);
         $this->assertNotEmpty($datewatch);
 
         // Create a course and enrolment, run cron, nothing should change.
         $course1 = $this->getDataGenerator()->create_course();
         $user1 = $this->getDataGenerator()->create_user();
         $user2 = $this->getDataGenerator()->create_user();
+        $user3 = $this->getDataGenerator()->create_user();
         $this->getDataGenerator()->enrol_user($user1->id, $course1->id, 'student', 'manual', 0, $now + 5 * DAYSECS);
         $enrol1 = $DB->get_record_sql('SELECT * FROM {user_enrolments} WHERE userid=? ORDER BY id DESC',
             [$user1->id], IGNORE_MULTIPLE);
         $this->getDataGenerator()->enrol_user($user2->id, $course1->id, 'student', 'manual', 0, $now + 10 * DAYSECS);
         $enrol2 = $DB->get_record_sql('SELECT * FROM {user_enrolments} WHERE userid=? ORDER BY id DESC',
             [$user2->id], IGNORE_MULTIPLE);
+        // User 3 should not be notified because the notification date is in the past, even though the timeend is in the future.
+        $this->getDataGenerator()->enrol_user($user3->id, $course1->id, 'student', 'manual', 0, $now + 2 * DAYSECS);
+        $enrol3 = $DB->get_record_sql('SELECT * FROM {user_enrolments} WHERE userid=? ORDER BY id DESC',
+            [$user3->id], IGNORE_MULTIPLE);
 
         $upcoming = array_values($DB->get_records('tool_datewatch_upcoming', ['datewatchid' => $datewatch->id], 'id'));
         $this->assertEquals(2, count($upcoming));
-        $expected1 = ['objectid' => $enrol1->id, 'timestamp' => $now + 2 * DAYSECS, 'notified' => 0];
+        $expected1 = ['objectid' => $enrol1->id, 'value' => $now + 5 * DAYSECS];
         $this->assertEquals($expected1, array_intersect_key((array)$upcoming[0], $expected1));
-        $expected2 = ['objectid' => $enrol2->id, 'timestamp' => $now + 7 * DAYSECS, 'notified' => 0];
+        $expected2 = ['objectid' => $enrol2->id, 'value' => $now + 10 * DAYSECS];
         $this->assertEquals($expected2, array_intersect_key((array)$upcoming[1], $expected2));
 
         // Run cron - no messages, no changes to the upcoming table.
@@ -289,13 +274,6 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
         $this->assertEquals($user1->id, $messages[0]->useridto);
         $this->assertEquals('Your enrolment will end soon', $messages[0]->subject);
 
-        // Record is marked as notified in the upcoming table.
-        $upcoming = array_values($DB->get_records('tool_datewatch_upcoming', ['datewatchid' => $datewatch->id], 'id'));
-        $this->assertEquals(2, count($upcoming));
-        $expected1 = ['objectid' => $enrol1->id, 'notified' => 1];
-        $this->assertEquals($expected1, array_intersect_key((array)$upcoming[0], $expected1));
-        $this->assertEquals($expected2, array_intersect_key((array)$upcoming[1], $expected2));
-
         // Run cron again, no messages will be sent.
         $sink = $this->redirectMessages();
         (new tool_datewatch\task\watch())->execute();
@@ -303,18 +281,13 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
         $this->assertCount(0, $messages);
     }
 
-    public function test_watcher_broken_condition() {
+    public function test_broken_watcher() {
         $this->resetAfterTest();
 
         // Catching exception when reindexing.
-        $this->get_generator()->register_watcher('course_broken_condition');
+        $this->get_generator()->register_watcher('broken');
         (new tool_datewatch\task\watch())->execute();
-        $this->assertDebuggingCalled('Invalid watcher definition tool_datewatch / course / startdate');
-        $this->resetDebugging();
-
-        // Catching exception when inserting a record.
-        $course1 = $this->getDataGenerator()->create_course(['format' => 'weeks', 'startdate' => time() + DAYSECS]);
-        $this->assertDebuggingCalled('Invalid condition query defined in the date watcher tool_datewatch / course / startdate');
+        $this->assertDebuggingCalled('Invalid watcher definition course / nonexistingfield');
         $this->resetDebugging();
     }
 
@@ -356,7 +329,7 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
 
         $this->get_generator()->register_watcher('assign');
         (new tool_datewatch\task\watch())->execute();
-        $datewatch = $DB->get_record('tool_datewatch', ['component' => 'tool_datewatch', 'tablename' => 'assign']);
+        $datewatch = $DB->get_record('tool_datewatch', ['tablename' => 'assign']);
         $this->assertNotEmpty($datewatch);
 
         // Create a course and module, make sure the date is watched.
@@ -365,7 +338,7 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
 
         $upcoming = array_values($DB->get_records('tool_datewatch_upcoming', ['datewatchid' => $datewatch->id]));
         $this->assertCount(1, $upcoming);
-        $this->assertEquals($now + 3 * DAYSECS, $upcoming[0]->timestamp);
+        $this->assertEquals($now + 3 * DAYSECS, $upcoming[0]->value);
 
         // Test update module.
         $formdata = $DB->get_record('course_modules', ['id' => $assign->cmid]);
@@ -380,7 +353,7 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
 
         $upcoming = array_values($DB->get_records('tool_datewatch_upcoming', ['datewatchid' => $datewatch->id]));
         $this->assertCount(1, $upcoming);
-        $this->assertEquals($now + 4 * DAYSECS, $upcoming[0]->timestamp);
+        $this->assertEquals($now + 4 * DAYSECS, $upcoming[0]->value);
 
         // Test delete module.
         course_delete_module($assign->cmid);

@@ -24,7 +24,7 @@
 class tool_datewatch_manager {
     /** @var tool_datewatch_watcher[] Watchers defined in the plugins callbacks, indexed by hash */
     protected static $watchers;
-    /** @var int[] Watchers present in the database, hash=>id */
+    /** @var stdClass[] Watchers present in the database */
     protected static $dbwatchers = [];
     /** @var string */
     protected $component;
@@ -49,29 +49,12 @@ class tool_datewatch_manager {
     }
 
     /**
-     * Calculates an unique key for either an exported watcher or a record from the watcher table
-     *
-     * @param tool_datewatch_watcher $watcher
-     * @return string
-     */
-    protected static function get_watcher_hash(tool_datewatch_watcher $watcher) {
-        return md5($watcher->component .
-            '|' . $watcher->tablename .
-            '|' . $watcher->fieldname .
-            '|' . $watcher->offset .
-            '|' . $watcher->query .
-            '|' . json_encode($watcher->params) .
-            '|' . $watcher->shortname);
-    }
-
-    /**
      * Get all watchers defined in plugins
-     *
-     * @param bool $reconcile if executed from cron and we also need to reconcile with DB and re-index
      */
-    public static function fetch_watchers(bool $reconcile = false) {
+    public static function fetch_watchers() {
         global $DB;
         self::$watchers = [];
+        self::$dbwatchers = [];
         $plugins = get_plugins_with_function('datewatch');
 
         foreach ($plugins as $plugintype => $funcs) {
@@ -79,67 +62,81 @@ class tool_datewatch_manager {
                 $manager = new self($plugintype . '_' . $pluginname);
                 call_user_func_array($functionname, [$manager]);
                 foreach ($manager->componentwatchers as $watcher) {
-                    $hash = self::get_watcher_hash($watcher);
-                    self::$watchers[$hash] = $watcher;
+                    self::$watchers[] = $watcher;
                 }
             }
         }
 
-        if (!$reconcile && empty(self::$watchers)) {
-            // Do not bother querying DB if there are no watchers in callbacks.
-            self::$dbwatchers = [];
-            return;
+        if (!empty(self::$watchers)) {
+            self::$dbwatchers = $DB->get_records('tool_datewatch');
+        }
+    }
+
+    protected static function initial_index_of_watchers() {
+        global $DB;
+        $fields = [];
+        self::fetch_watchers();
+        foreach (self::$watchers as $watcher) {
+            $key = $watcher->tablename . '/' . $watcher->fieldname;
+            if (!isset($fields[$key])) {
+                $fields[$key] = (object)[
+                    'tablename' => $watcher->tablename,
+                    'fieldname' => $watcher->fieldname,
+                    'maxoffset' => $watcher->offset,
+                ];
+            } else if ($fields[$key]->maxoffset < $watcher->offset) {
+                $fields[$key]->maxoffset = $watcher->offset;
+            }
+        }
+        $dbwatchers = [];
+        $records = $DB->get_records('tool_datewatch');
+        foreach ($records as $record) {
+            $key = $record->tablename . '/' . $record->fieldname;
+            $dbwatchers[$key] = $record;
         }
 
-        self::$dbwatchers = $DB->get_records_menu('tool_datewatch', [], '', 'hash, id');
-
-        if (!$reconcile) {
-            return;
-        }
-
-        foreach (self::$watchers as $hash => $watcher) {
-            if (!array_key_exists($hash, self::$dbwatchers)) {
-                self::$dbwatchers[$hash] = self::register_watcher($watcher);
+        foreach ($dbwatchers as $key => $record) {
+            if (!array_key_exists($key, $fields)) {
+                self::unregister_watcher($record->id);
             }
         }
 
-        foreach (self::$dbwatchers as $hash => $id) {
-            if (!array_key_exists($hash, self::$watchers)) {
-                self::unregister_watcher($id);
+        foreach ($fields as $key => $record) {
+            if (!array_key_exists($key, $dbwatchers)) {
+                $dbwatchers[$key] = self::register_watcher($record);
+            } else if ($record->maxoffset > $dbwatchers[$key]->maxoffset) {
+                // TODO only update.
+                self::unregister_watcher($record->id);
+                $dbwatchers[$key] = self::register_watcher($record);
             }
         }
+
+        self::$dbwatchers = $DB->get_records('tool_datewatch');
+        return $dbwatchers;
     }
 
     /**
      * Register watcher in the db, re-index the field
      *
      * @param tool_datewatch_watcher $watcher
-     * @return int
+     * @return stdClass
      */
-    protected static function register_watcher(tool_datewatch_watcher $watcher): int {
+    protected static function register_watcher(stdClass $record): stdClass {
         global $DB;
-        $id = $DB->insert_record('tool_datewatch',
-            [
-                'hash' => self::get_watcher_hash($watcher),
-                'component' => $watcher->component,
-                'tablename' => $watcher->tablename,
-                'fieldname' => $watcher->fieldname,
-            ]);
-        $sql = "INSERT INTO {tool_datewatch_upcoming} (datewatchid, objectid, timestamp)
-                SELECT :datewatchid, id, ".$watcher->fieldname." + ".$watcher->offset."
-                FROM {".$watcher->tablename."}
-                WHERE ".$watcher->fieldname." + ".$watcher->offset.">=:now";
-        $params = $watcher->params + ['datewatchid' => $id, 'now' => time() - MINSECS];
-        if ($query = $watcher->query) {
-            $sql .= ' AND '.$query;
-        }
+        $record->lastcheck = time();
+        $record->id = $DB->insert_record('tool_datewatch', $record);
+        $sql = "INSERT INTO {tool_datewatch_upcoming} (datewatchid, objectid, value)
+                SELECT :datewatchid, id, ".$record->fieldname."
+                FROM {".$record->tablename."}
+                WHERE ".$record->fieldname." >= :minvalue";
+        $params = ['datewatchid' => $record->id, 'minvalue' => time() - $record->maxoffset];
         try {
             $DB->execute($sql, $params);
         } catch (Exception $ex) {
-            debugging('Invalid watcher definition ' . $watcher,
+            debugging('Invalid watcher definition ' . $record->tablename . ' / ' . $record->fieldname,
                 DEBUG_DEVELOPER);
         }
-        return $id;
+        return $record;
     }
 
     /**
@@ -154,49 +151,22 @@ class tool_datewatch_manager {
     }
 
     /**
-     * Get watchers for a given table / record
+     * Get watchers for a given table / record (only the ones that are already indexed in the DB)
      *
      * @param string $tablename
-     * @param int $tableid id of the record in the table (optional)
-     * @return tool_datewatch_watcher[]
+     * @return stdClass[] list of records from {tool_datewatch} table indexed by id
      */
-    public static function get_watchers(string $tablename, ?int $tableid = null): array {
+    public static function get_db_watchers_for_table(string $tablename): array {
         $watchers = [];
         if (self::$watchers === null) {
             self::fetch_watchers();
         }
-        foreach (self::$watchers as $hash => $watcher) {
-            if (array_key_exists($hash, self::$dbwatchers) &&
-                    $watcher->tablename === $tablename &&
-                    (!$tableid || self::is_table_record_watchable($watcher, $tableid))) {
-                $watchers[self::$dbwatchers[$hash]] = $watcher;
+        foreach (self::$dbwatchers as $record) {
+            if ($record->tablename === $tablename) {
+                $watchers[$record->id] = $record;
             }
         }
         return $watchers;
-    }
-
-    /**
-     * Checks if a record in the table should be watched (using "query" and "params" from the watcher)
-     *
-     * @param tool_datewatch_watcher $watcher
-     * @param int $tableid
-     * @return bool
-     */
-    protected static function is_table_record_watchable(tool_datewatch_watcher $watcher, int $tableid): bool {
-        global $DB;
-        if ($watcher->query) {
-            try {
-                if (!$DB->get_record_select($watcher->tablename, "id = :objectid AND " . $watcher->query,
-                    $watcher->params + ['objectid' => $tableid])) {
-                    return false;
-                }
-            } catch (dml_exception $e) {
-                debugging('Invalid condition query defined in the date watcher ' . $watcher,
-                    DEBUG_DEVELOPER);
-                return false;
-            }
-        }
-        return true;
     }
 
     /**
@@ -209,10 +179,10 @@ class tool_datewatch_manager {
     public static function process_event(\core\event\base $event, ?string $tablename, ?int $tableid) {
         global $DB;
         if ($tablename && $tableid) {
-            if (!$watchers = self::get_watchers($tablename)) {
+            if (!$dbwatchers = self::get_db_watchers_for_table($tablename)) {
                 return;
             }
-            list($sql, $params) = $DB->get_in_or_equal(array_keys($watchers), SQL_PARAMS_NAMED);
+            list($sql, $params) = $DB->get_in_or_equal(array_keys($dbwatchers), SQL_PARAMS_NAMED);
             $select = 'datewatchid ' . $sql . ' AND objectid = :objectid';
             $params += ['objectid' => $tableid];
             if ($event->crud === 'd') {
@@ -238,15 +208,17 @@ class tool_datewatch_manager {
      */
     protected static function prepare_upcoming(string $tablename, int $tableid, \core\event\base $event) {
         $upcoming = [];
-        if (($watchers = self::get_watchers($tablename, $tableid)) &&
+        if (($dbwatchers = self::get_db_watchers_for_table($tablename)) &&
                 ($record = $event->get_record_snapshot($tablename, $tableid))) {
-            foreach ($watchers as $id => $watcher) {
-                $timestamp = (int)$record->{$watcher->fieldname} + $watcher->offset;
-                $upcoming[] = [
-                    'datewatchid' => $id,
-                    'objectid' => $record->id,
-                    'timestamp' => $timestamp,
-                ];
+            foreach ($dbwatchers as $id => $dbwatcher) {
+                $value = (int)($record->{$dbwatcher->fieldname} ?? 0);
+                if ($value + $dbwatcher->maxoffset >= time()) {
+                    $upcoming[] = [
+                        'datewatchid' => $id,
+                        'objectid' => $record->id,
+                        'value' => $value,
+                    ];
+                }
             }
         }
         return $upcoming;
@@ -266,11 +238,11 @@ class tool_datewatch_manager {
         foreach ($upcoming as $u) {
             foreach ($currentupcoming as $c) {
                 if ($u['objectid'] == $c->objectid && $u['datewatchid'] == $c->datewatchid) {
-                    if ($u['timestamp'] != $c->timestamp) {
+                    if ($u['value'] != $c->value) {
                         $toupdate[] = [
                             'id' => $c->id,
-                            'timestamp' => $u['timestamp'],
-                            'notified' => ($u['timestamp'] > time() - MINSECS) ? 0 : 1,
+                            'value' => $u['value'],
+                            'notified' => ($u['value'] > time() - MINSECS) ? 0 : 1,
                         ];
                     }
                     unset($todelete[$c->id]);
@@ -285,7 +257,7 @@ class tool_datewatch_manager {
         }
         if ($toinsert) {
             $toinsert = array_filter($toinsert, function($element) {
-                return $element['timestamp'] > time() - MINSECS;
+                return $element['value'] > time() - MINSECS;
             });
             if ($toinsert) {
                 $DB->insert_records('tool_datewatch_upcoming', $toinsert);
@@ -297,44 +269,46 @@ class tool_datewatch_manager {
     }
 
     /**
-     * Get watcher definition from the id in the database table
-     *
-     * @param int $datewatchid
-     * @return tool_datewatch_watcher|null
-     */
-    protected static function get_watcher_from_id(int $datewatchid): ?tool_datewatch_watcher {
-        $hashes = array_flip(self::$dbwatchers);
-        if (!array_key_exists($datewatchid, $hashes)) {
-            return null;
-        }
-        return self::$watchers[$hashes[$datewatchid]] ?? null;
-    }
-
-    /**
      * Checks if any watched date has happened, execute callback and mark as notified (called from the scheduled task)
      */
     public static function monitor_upcoming() {
         global $DB;
-        $sql = "SELECT *
-                FROM {tool_datewatch_upcoming}
-                WHERE notified = 0 AND timestamp <= ".time();
-        $tonotifys = $DB->get_records_sql($sql, ['now' => time()]);
-        if (!$tonotifys) {
+
+        $dbwatchers = self::initial_index_of_watchers();
+
+        if (!self::$dbwatchers) {
             return;
         }
-        foreach ($tonotifys as $tonotify) {
-            if (($watcher = self::get_watcher_from_id($tonotify->datewatchid)) &&
-                    ($callback = $watcher->callback)) {
-                try {
-                    $callback($tonotify->objectid, $tonotify->timestamp);
-                } catch (Throwable $t) {
-                    debugging('Exception calling callback in the date watcher ' . $watcher,
-                     DEBUG_DEVELOPER);
+
+        $toupdate = [];
+        $now = time();
+        sleep(1); // To prevent race conditions when some record was updated/inserted at the same second by another process.
+        foreach (self::$watchers as $watcher) {
+            if ($callback = $watcher->callback) {
+                $key = $watcher->tablename . '/' . $watcher->fieldname;
+                $record = $dbwatchers[$key] ?? null;
+                if ($record) {
+                    $sql = "SELECT *
+                    FROM {tool_datewatch_upcoming}
+                    WHERE value > :lastcheck AND value <= :date";
+                    $params = ['date' => $now - $watcher->offset, 'lastcheck' => $record->lastcheck - $watcher->offset];
+                    $tonotifys = $DB->get_records_sql($sql, $params);
+                    foreach ($tonotifys as $tonotify) {
+                        try {
+                            $callback($tonotify->objectid, $tonotify->value);
+                        } catch (Throwable $t) {
+                            debugging('Exception calling callback in the date watcher ' . $watcher,
+                                DEBUG_DEVELOPER);
+                        }
+                    }
+                    $toupdate[$dbwatchers[$key]->id] = ['id' => $dbwatchers[$key]->id, 'lastcheck' => $now];
                 }
             }
         }
-        list($sqlu, $paramsu) = $DB->get_in_or_equal(array_keys($tonotifys));
-        $DB->execute("UPDATE {tool_datewatch_upcoming} SET notified = 1 WHERE id ".$sqlu, $paramsu);
+
+        foreach ($toupdate as $dataobject) {
+            $DB->update_record('tool_datewatch', $dataobject);
+        }
     }
 
     /**

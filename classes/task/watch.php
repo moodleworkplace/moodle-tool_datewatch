@@ -45,8 +45,6 @@ class watch extends \core\task\scheduled_task {
      * Execute.
      */
     public function execute() {
-        // Updating watch list.
-        \tool_datewatch_manager::fetch_watchers(true);
         // Monitor dates.
         \tool_datewatch_manager::monitor_upcoming();
     }

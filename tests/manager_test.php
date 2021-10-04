@@ -263,7 +263,7 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
         if (extension_loaded('uopz')) {
             uopz_set_return('time', $now + $delta);
         } else {
-            $this->get_generator()->shift_dates('tool_datewatch', 'user_enrolments', $enrol1->id, 'timeend', -$delta);
+            $this->get_generator()->shift_dates('user_enrolments', 'timeend', -$delta);
         }
 
         // Running cron will send a message to the user.
@@ -272,7 +272,7 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
         $messages = $sink->get_messages();
         $this->assertCount(1, $messages);
         $this->assertEquals($user1->id, $messages[0]->useridto);
-        $this->assertEquals('Your enrolment will end soon', $messages[0]->subject);
+        $this->assertEquals('Your enrolment will end in 3 days', $messages[0]->subject);
 
         // Run cron again, no messages will be sent.
         $sink = $this->redirectMessages();
@@ -310,7 +310,7 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
         if (extension_loaded('uopz')) {
             uopz_set_return('time', time() + $delta);
         } else {
-            $this->get_generator()->shift_dates('tool_datewatch', 'user_enrolments', $enrol1->id, 'timeend', -$delta);
+            $this->get_generator()->shift_dates('user_enrolments', 'timeend', -$delta);
         }
 
         (new tool_datewatch\task\watch())->execute();
@@ -385,4 +385,89 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
         $this->getDataGenerator()->create_course(['format' => 'topics', 'startdate' => $now + 4 * DAYSECS]);
         $this->assertEquals($count + 2, $DB->count_records('tool_datewatch_upcoming'));
     }
+
+    public function test_multiple_watchers() {
+        global $DB;
+        $this->resetAfterTest();
+        $now = time();
+
+        // Register two watchers on the same table with different offsets.
+        $this->get_generator()->register_watcher('enrolnotification');
+        $this->get_generator()->register_watcher('enrolnotification5');
+        (new tool_datewatch\task\watch())->execute();
+
+        // Make sure the watcher for the course start date is created.
+        $datewatch = $DB->get_record('tool_datewatch',
+            ['tablename' => 'user_enrolments', 'fieldname' => 'timeend']);
+        $this->assertNotEmpty($datewatch);
+
+        // Create a course and enrolment, run cron, nothing should change.
+        $course1 = $this->getDataGenerator()->create_course();
+        $user1 = $this->getDataGenerator()->create_user();
+        $user2 = $this->getDataGenerator()->create_user();
+        $user3 = $this->getDataGenerator()->create_user();
+        // First user will receive notification only "3 days before".
+        $this->getDataGenerator()->enrol_user($user1->id, $course1->id, 'student', 'manual', 0, $now + 4 * DAYSECS);
+        $enrol1 = $DB->get_record_sql('SELECT * FROM {user_enrolments} WHERE userid=? ORDER BY id DESC',
+            [$user1->id], IGNORE_MULTIPLE);
+        // Second user will receive notifications "3 days before" and "5 days before".
+        $this->getDataGenerator()->enrol_user($user2->id, $course1->id, 'student', 'manual', 0, $now + 10 * DAYSECS);
+        $enrol2 = $DB->get_record_sql('SELECT * FROM {user_enrolments} WHERE userid=? ORDER BY id DESC',
+            [$user2->id], IGNORE_MULTIPLE);
+        // User 3 should not be notified because the notification date is in the past, even though the timeend is in the future.
+        $this->getDataGenerator()->enrol_user($user3->id, $course1->id, 'student', 'manual', 0, $now + 2 * DAYSECS);
+        $enrol3 = $DB->get_record_sql('SELECT * FROM {user_enrolments} WHERE userid=? ORDER BY id DESC',
+            [$user3->id], IGNORE_MULTIPLE);
+
+        $upcoming = array_values($DB->get_records('tool_datewatch_upcoming', ['datewatchid' => $datewatch->id], 'id'));
+        $this->assertEquals(2, count($upcoming));
+        $expected1 = ['objectid' => $enrol1->id, 'value' => $now + 4 * DAYSECS];
+        $this->assertEquals($expected1, array_intersect_key((array)$upcoming[0], $expected1));
+        $expected2 = ['objectid' => $enrol2->id, 'value' => $now + 10 * DAYSECS];
+        $this->assertEquals($expected2, array_intersect_key((array)$upcoming[1], $expected2));
+
+        // Run cron - no messages, no changes to the upcoming table.
+        $sink = $this->redirectMessages();
+        (new tool_datewatch\task\watch())->execute();
+        $messages = $sink->get_messages();
+        $this->assertCount(0, $messages);
+
+        $upcoming = array_values($DB->get_records('tool_datewatch_upcoming', ['datewatchid' => $datewatch->id], 'id'));
+        $this->assertEquals(2, count($upcoming));
+        $this->assertEquals($expected1, array_intersect_key((array)$upcoming[0], $expected1));
+        $this->assertEquals($expected2, array_intersect_key((array)$upcoming[1], $expected2));
+
+        // Timetravel by 2 days.
+        $delta1 = 2 * DAYSECS + MINSECS;
+        if (extension_loaded('uopz')) {
+            uopz_set_return('time', $now + $delta1);
+        } else {
+            $this->get_generator()->shift_dates('user_enrolments', 'timeend', -$delta1);
+        }
+
+        // Running cron will send a message to the user 1.
+        $sink = $this->redirectMessages();
+        (new tool_datewatch\task\watch())->execute();
+        $messages = $sink->get_messages();
+        $this->assertCount(1, $messages);
+        $this->assertEquals($user1->id, $messages[0]->useridto);
+        $this->assertEquals('Your enrolment will end in 3 days', $messages[0]->subject);
+
+        // Timetravel by 4 more days.
+        $delta2 = 4 * DAYSECS + MINSECS;
+        if (extension_loaded('uopz')) {
+            uopz_set_return('time', $now + $delta1 + $delta2);
+        } else {
+            $this->get_generator()->shift_dates('user_enrolments', 'timeend', - $delta2);
+        }
+
+        // Run cron again, message will be sent to user2.
+        $sink = $this->redirectMessages();
+        (new tool_datewatch\task\watch())->execute();
+        $messages = $sink->get_messages();
+        $this->assertCount(1, $messages);
+        $this->assertEquals($user2->id, $messages[0]->useridto);
+        $this->assertEquals('Your enrolment will end in 5 days', $messages[0]->subject);
+    }
+
 }

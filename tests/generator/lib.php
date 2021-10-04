@@ -51,7 +51,16 @@ class tool_datewatch_generator extends component_generator_base {
                 ->set_callback(function ($recordid, $datevalue) {
                     global $DB;
                     $uenrol = $DB->get_record('user_enrolments', ['id' => $recordid]);
-                    self::send_message($uenrol->userid);
+                    self::send_message($uenrol->userid, 3);
+                });
+        }
+
+        if (in_array('enrolnotification5', self::$watchers)) {
+            $manager->watch('user_enrolments', 'timeend', - 5 * DAYSECS)
+                ->set_callback(function ($recordid, $datevalue) {
+                    global $DB;
+                    $uenrol = $DB->get_record('user_enrolments', ['id' => $recordid]);
+                    self::send_message($uenrol->userid, 5);
                 });
         }
 
@@ -100,36 +109,36 @@ class tool_datewatch_generator extends component_generator_base {
     /**
      * Shift dates in both watched table and upcoming table by $delta seconds
      *
-     * This function is used if uupz is not installed and we can't "time travel" for testing.
+     * This function is used if uopz is not installed and we can't "time travel" for testing.
      *
-     * @param string $component
      * @param string $table
-     * @param int $objectid
      * @param string $field
      * @param int $delta
      */
-    public function shift_dates(string $component, string $table, int $objectid, string $field, int $delta) {
+    public function shift_dates(string $table, string $field, int $delta) {
         global $DB;
-        $datewatchid = $DB->get_field_sql('SELECT id FROM {tool_datewatch} WHERE component = ? AND tablename = ? AND fieldname = ?',
-            [$component, $table, $field]);
-        $DB->execute("UPDATE {".$table."} SET $field = $field + ? WHERE id = ?", [$delta, $objectid]);
-        $DB->execute('UPDATE {tool_datewatch_upcoming} SET value = value + ? WHERE objectid = ? AND datewatchid = ?',
-            [$delta, $objectid, $datewatchid]);
+        $datewatchid = $DB->get_field_sql('SELECT id FROM {tool_datewatch} WHERE tablename = ? AND fieldname = ?',
+            [$table, $field]);
+        $DB->execute("UPDATE {tool_datewatch} SET lastcheck = lastcheck + ? WHERE id = ?", [$delta, $datewatchid]);
+        $DB->execute("UPDATE {".$table."} SET $field = $field + ?", [$delta]);
+        $DB->execute('UPDATE {tool_datewatch_upcoming} SET value = value + ? WHERE datewatchid = ?',
+            [$delta, $datewatchid]);
     }
 
     /**
      * Send a message to a user
      *
      * @param int $userid
+     * @param int $daystoend
      */
-    protected static function send_message(int $userid) {
+    protected static function send_message(int $userid, int $daystoend) {
         // Any core message will do here.
         $message = new \core\message\message();
         $message->component         = 'moodle';
         $message->name              = 'instantmessage';
         $message->userfrom          = core_user::get_noreply_user();
         $message->userto            = core_user::get_user($userid);
-        $message->subject           = 'Your enrolment will end soon';
+        $message->subject           = 'Your enrolment will end in '.$daystoend.' days';
         $message->fullmessage       = 'Hello there';
         $message->fullmessageformat = FORMAT_MARKDOWN;
         $message->fullmessagehtml   = 'Hello there';

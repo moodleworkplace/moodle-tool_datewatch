@@ -41,25 +41,23 @@ class tool_datewatch_generator extends component_generator_base {
 
         if (in_array('user_enrolments', self::$watchers)) {
             $manager->watch('user_enrolments', 'timeend')
-                ->set_callback(function ($recordid, $datevalue) {
+                ->set_callback(function () {
                     null;
                 });
         }
 
         if (in_array('enrolnotification', self::$watchers)) {
             $manager->watch('user_enrolments', 'timeend', - 3 * DAYSECS)
-                ->set_callback(function ($recordid, $datevalue) {
-                    global $DB;
-                    $uenrol = $DB->get_record('user_enrolments', ['id' => $recordid]);
+                ->set_callback(function (\tool_datewatch\notification $notification) {
+                    $uenrol = $notification->get_record();
                     self::send_message($uenrol->userid, 3);
                 });
         }
 
         if (in_array('enrolnotification5', self::$watchers)) {
             $manager->watch('user_enrolments', 'timeend', - 5 * DAYSECS)
-                ->set_callback(function ($recordid, $datevalue) {
-                    global $DB;
-                    $uenrol = $DB->get_record('user_enrolments', ['id' => $recordid]);
+                ->set_callback(function (\tool_datewatch\notification $notification) {
+                    $uenrol = $notification->get_record();
                     self::send_message($uenrol->userid, 5);
                 });
         }
@@ -73,7 +71,7 @@ class tool_datewatch_generator extends component_generator_base {
 
         if (in_array('enrol_broken_callback', self::$watchers)) {
             $manager->watch('user_enrolments', 'timeend')
-                ->set_callback(function ($recordid, $datevalue) {
+                ->set_callback(function () {
                     throw new \coding_exception('Oops');
                 });
         }

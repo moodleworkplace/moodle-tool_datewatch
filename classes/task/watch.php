@@ -32,6 +32,25 @@ namespace tool_datewatch\task;
  */
 class watch extends \core\task\scheduled_task {
 
+    /** @var string */
+    protected $idnumber;
+
+    /**
+     * Constructor
+     */
+    public function __construct() {
+        $this->idnumber = random_string(64);
+    }
+
+    /**
+     * Unique idnumber for this tas
+     *
+     * @return string
+     */
+    public function get_task_idnumber(): string {
+        return $this->idnumber;
+    }
+
     /**
      * Get name.
      * @return string
@@ -46,6 +65,6 @@ class watch extends \core\task\scheduled_task {
      */
     public function execute() {
         // Monitor dates.
-        \tool_datewatch_manager::monitor_upcoming();
+        \tool_datewatch_manager::monitor_upcoming($this);
     }
 }

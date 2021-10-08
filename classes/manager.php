@@ -134,7 +134,8 @@ class tool_datewatch_manager {
         try {
             $DB->execute($sql, $params);
         } catch (Exception $ex) {
-            debugging('Invalid watcher definition ' . $record->tablename . ' / ' . $record->fieldname,
+            debugging('Invalid watcher definition ' . $record->tablename . ' / ' . $record->fieldname . ': ' .
+                $ex->getMessage(),
                 DEBUG_DEVELOPER);
         }
         return $record;
@@ -272,7 +273,7 @@ class tool_datewatch_manager {
     /**
      * Checks if any watched date has happened, execute callback and mark as notified (called from the scheduled task)
      */
-    public static function monitor_upcoming() {
+    public static function monitor_upcoming(\tool_datewatch\task\watch $task) {
         global $DB;
 
         self::initial_index_of_watchers();
@@ -284,6 +285,7 @@ class tool_datewatch_manager {
         $now = time();
         sleep(1); // To prevent race conditions when some record was updated/inserted at the same second by another process.
 
+        $notification = new \tool_datewatch\notification($task);
         foreach (self::$dbwatchers as $dbwatcher) {
             // For each watcher registered in the DB find all callbacks and offsets.
             $watchers = array_filter(self::$watchers, function($watcher) use ($dbwatcher) {
@@ -305,17 +307,19 @@ class tool_datewatch_manager {
                     'minoffset' => min($offsets),
                     'maxoffset' => max($offsets),
                 ];
-                $tonotifys = $DB->get_records_sql($sql, $params);
+                $upcomingrecords = $DB->get_records_sql($sql, $params);
 
-                foreach ($tonotifys as $tonotify) {
+                foreach ($upcomingrecords as $tonotify) {
                     foreach ($watchers as $watcher) {
                         $notifytime = $tonotify->value + $watcher->offset;
                         if ($notifytime > $dbwatcher->lastcheck && $notifytime <= $now) {
                             try {
+                                $notification->init($watcher, $tonotify->objectid, $tonotify->value);
                                 $callback = $watcher->callback;
-                                $callback($tonotify->objectid, $tonotify->value);
+                                $callback($notification);
                             } catch (Throwable $t) {
-                                debugging('Exception calling callback in the date watcher ' . $watcher,
+                                debugging('Exception calling callback in the date watcher ' . $watcher .
+                                    ": ".$t->getMessage(),
                                     DEBUG_DEVELOPER);
                             }
                         }

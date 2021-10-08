@@ -71,7 +71,7 @@ final class tool_datewatch_watcher {
     /**
      * Register callback that will be called when event occurs
      *
-     * @param callable $callback accepts parameters (int $objectid, int $timestamp)
+     * @param callable $callback accepts single parameter (\tool_datewatch\notification $notification)
      * @return $this
      */
     public function set_callback(callable $callback): self {

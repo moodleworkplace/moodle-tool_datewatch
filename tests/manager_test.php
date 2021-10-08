@@ -287,7 +287,10 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
         // Catching exception when reindexing.
         $this->get_generator()->register_watcher('broken');
         (new tool_datewatch\task\watch())->execute();
-        $this->assertDebuggingCalled('Invalid watcher definition course / nonexistingfield');
+        $debugging = $this->getDebuggingMessages();
+        $this->assertCount(1, $debugging);
+        $debug = reset($debugging);
+        $this->assertStringStartsWith('Invalid watcher definition course / nonexistingfield', $debug->message);
         $this->resetDebugging();
     }
 
@@ -314,7 +317,8 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
         }
 
         (new tool_datewatch\task\watch())->execute();
-        $this->assertDebuggingCalled('Exception calling callback in the date watcher tool_datewatch / user_enrolments / timeend');
+        $this->assertDebuggingCalled('Exception calling callback in the date watcher tool_datewatch / user_enrolments / timeend: '.
+            'Coding error detected, it must be fixed by a programmer: Oops');
         $this->resetDebugging();
     }
 

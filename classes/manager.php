@@ -272,6 +272,8 @@ class tool_datewatch_manager {
 
     /**
      * Checks if any watched date has happened, execute callback and mark as notified (called from the scheduled task)
+     *
+     * @param \tool_datewatch\task\watch $task
      */
     public static function monitor_upcoming(\tool_datewatch\task\watch $task) {
         global $DB;

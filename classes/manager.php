@@ -30,7 +30,17 @@ class manager {
     static private $manager = null;
     /** @var string */
     static private $key = null;
+    /** @var watcher[] Watchers defined in the plugins callbacks, indexed by hash */
+    protected $watchers;
+    /** @var \stdClass[] Watchers present in the database */
+    protected $dbwatchers = [];
 
+    /**
+     * Returns a single instance of this class that is constant within the request and is reset for each unittest
+     *
+     * @return manager|null
+     * @throws \coding_exception
+     */
     public static function singleton() {
         // Use the identifier stored in the request cache so that each run of unittests has a different instance
         // of the singleton (caches are reset between the unittests).
@@ -44,16 +54,8 @@ class manager {
         return self::$manager;
     }
 
-
-    /** @var watcher[] Watchers defined in the plugins callbacks, indexed by hash */
-    protected $watchers;
-    /** @var \stdClass[] Watchers present in the database */
-    protected $dbwatchers = [];
-
     /**
      * Constructor
-     *
-     * @param string $component
      */
     private function __construct() {
     }

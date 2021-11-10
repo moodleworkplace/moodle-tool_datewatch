@@ -43,19 +43,24 @@ final class watcher {
 
     /**
      * Constructor
+     */
+    private function __construct() {
+    }
+
+    /**
+     * Create a new instance of the watcher
      *
      * @param string $tablename
      * @param string $fieldname
      * @param int $offset
+     * @return static
      */
-    private function __construct(string $tablename, string $fieldname, int $offset = 0) {
-        $this->tablename = $tablename;
-        $this->fieldname = $fieldname;
-        $this->offset = $offset;
-    }
-
     public static function instance(string $tablename, string $fieldname, int $offset = 0): self {
-        return new self($tablename, $fieldname, $offset);
+        $instance = new self();
+        $instance->tablename = clean_param($tablename, PARAM_ALPHANUMEXT);
+        $instance->fieldname = clean_param($fieldname, PARAM_ALPHANUMEXT);
+        $instance->offset = $offset;
+        return $instance;
     }
 
     /**
@@ -72,8 +77,18 @@ final class watcher {
         return null;
     }
 
+    /**
+     * Sets the property value
+     *
+     * @param string $name
+     * @param mixed $value
+     * @throws \coding_exception
+     */
     public function __set($name, $value) {
-        if ($name === 'component') $this->component = clean_param($value, PARAM_COMPONENT);
+        if ($name === 'component') {
+            $this->component = clean_param($value, PARAM_COMPONENT);
+        }
+        debugging('Property '.$name.' does not exist or is not writable', DEBUG_DEVELOPER);
     }
 
     /**

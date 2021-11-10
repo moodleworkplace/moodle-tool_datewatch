@@ -30,7 +30,6 @@ class tool_datewatch_generator extends component_generator_base {
      * This function is called from {@see tool_datewatch_datewatch()} in lib.php
      */
     public static function register_watchers() {
-        // TODO
         $res = [];
         if (in_array('course', self::$watchers)) {
             $res[] = \tool_datewatch\watcher::instance('course', 'startdate')

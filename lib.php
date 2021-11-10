@@ -26,12 +26,10 @@ defined('MOODLE_INTERNAL') || die();
 
 /**
  * Callback for tool_datewatch (for unittests only)
- *
- * @param tool_datewatch_manager $manager
  */
-function tool_datewatch_datewatch(tool_datewatch_manager $manager) {
+function tool_datewatch_datewatch() {
     if (defined('PHPUNIT_TEST') && PHPUNIT_TEST && class_exists('tool_datewatch_generator')) {
         // Register watchers for unittests only.
-        tool_datewatch_generator::register_watchers($manager);
+        return tool_datewatch_generator::register_watchers();
     }
 }

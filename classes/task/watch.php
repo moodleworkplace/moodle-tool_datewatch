@@ -65,6 +65,6 @@ class watch extends \core\task\scheduled_task {
      */
     public function execute() {
         // Monitor dates.
-        \tool_datewatch_manager::monitor_upcoming($this);
+        \tool_datewatch\manager::singleton()->monitor_upcoming($this);
     }
 }

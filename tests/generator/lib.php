@@ -28,26 +28,26 @@ class tool_datewatch_generator extends component_generator_base {
      * Mock some watchers
      *
      * This function is called from {@see tool_datewatch_datewatch()} in lib.php
-     *
-     * @param tool_datewatch_manager $manager
      */
-    public static function register_watchers(tool_datewatch_manager $manager) {
+    public static function register_watchers() {
+        // TODO
+        $res = [];
         if (in_array('course', self::$watchers)) {
-            $manager->watch('course', 'startdate')
+            $res[] = \tool_datewatch\watcher::instance('course', 'startdate')
                 ->set_callback(function() {
                     null;
                 });
         }
 
         if (in_array('user_enrolments', self::$watchers)) {
-            $manager->watch('user_enrolments', 'timeend')
+            $res[] = \tool_datewatch\watcher::instance('user_enrolments', 'timeend')
                 ->set_callback(function () {
                     null;
                 });
         }
 
         if (in_array('enrolnotification', self::$watchers)) {
-            $manager->watch('user_enrolments', 'timeend', - 3 * DAYSECS)
+            $res[] = \tool_datewatch\watcher::instance('user_enrolments', 'timeend', - 3 * DAYSECS)
                 ->set_callback(function (\tool_datewatch\notification $notification) {
                     $uenrol = $notification->get_record();
                     self::send_message($uenrol->userid, 3);
@@ -55,7 +55,7 @@ class tool_datewatch_generator extends component_generator_base {
         }
 
         if (in_array('enrolnotification5', self::$watchers)) {
-            $manager->watch('user_enrolments', 'timeend', - 5 * DAYSECS)
+            $res[] = \tool_datewatch\watcher::instance('user_enrolments', 'timeend', - 5 * DAYSECS)
                 ->set_callback(function (\tool_datewatch\notification $notification) {
                     $uenrol = $notification->get_record();
                     self::send_message($uenrol->userid, 5);
@@ -63,25 +63,27 @@ class tool_datewatch_generator extends component_generator_base {
         }
 
         if (in_array('broken', self::$watchers)) {
-            $manager->watch('course', 'nonexistingfield')
+            $res[] = \tool_datewatch\watcher::instance('course', 'nonexistingfield')
                 ->set_callback(function() {
                     null;
                 });
         }
 
         if (in_array('enrol_broken_callback', self::$watchers)) {
-            $manager->watch('user_enrolments', 'timeend')
+            $res[] = \tool_datewatch\watcher::instance('user_enrolments', 'timeend')
                 ->set_callback(function () {
                     throw new \coding_exception('Oops');
                 });
         }
 
         if (in_array('assign', self::$watchers)) {
-            $manager->watch('assign', 'duedate')
+            $res[] = \tool_datewatch\watcher::instance('assign', 'duedate')
                 ->set_callback(function() {
                     null;
                 });
         }
+
+        return $res;
     }
 
     /**
@@ -91,7 +93,7 @@ class tool_datewatch_generator extends component_generator_base {
      */
     public function register_watcher(string $name) {
         self::$watchers[] = $name;
-        tool_datewatch_manager::reset_caches();
+        \tool_datewatch\manager::reset_caches();
     }
 
     /**
@@ -99,9 +101,9 @@ class tool_datewatch_generator extends component_generator_base {
      */
     public function remove_watchers() {
         self::$watchers = [];
-        tool_datewatch_manager::reset_caches();
+        \tool_datewatch\manager::reset_caches();
         (new tool_datewatch\task\watch())->execute();
-        tool_datewatch_manager::reset_caches();
+        \tool_datewatch\manager::reset_caches();
     }
 
     /**

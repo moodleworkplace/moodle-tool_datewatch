@@ -14,10 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+namespace tool_datewatch;
+
 /**
- * Class tool_datewatch_watcher
+ * Class tool_datewatch\watcher
  *
- * @property-read string $component
+ * @property string $component
  * @property-read string $tablename
  * @property-read string $fieldname
  * @property-read int $offset
@@ -27,7 +29,7 @@
  * @copyright 2016 Marina Glancy
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-final class tool_datewatch_watcher {
+final class watcher {
     /** @var string */
     protected $component;
     /** @var string */
@@ -42,16 +44,18 @@ final class tool_datewatch_watcher {
     /**
      * Constructor
      *
-     * @param string $component
      * @param string $tablename
      * @param string $fieldname
      * @param int $offset
      */
-    public function __construct(string $component, string $tablename, string $fieldname, int $offset = 0) {
-        $this->component = $component;
+    private function __construct(string $tablename, string $fieldname, int $offset = 0) {
         $this->tablename = $tablename;
         $this->fieldname = $fieldname;
         $this->offset = $offset;
+    }
+
+    public static function instance(string $tablename, string $fieldname, int $offset = 0): self {
+        return new self($tablename, $fieldname, $offset);
     }
 
     /**
@@ -66,6 +70,10 @@ final class tool_datewatch_watcher {
         }
         debugging('Property '.$name.' does not exist', DEBUG_DEVELOPER);
         return null;
+    }
+
+    public function __set($name, $value) {
+        if ($name === 'component') $this->component = clean_param($value, PARAM_COMPONENT);
     }
 
     /**

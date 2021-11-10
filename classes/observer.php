@@ -35,14 +35,14 @@ class tool_datewatch_observer {
         }
         $tablename = $event->objecttable ?? '';
         $tableid = $event->objectid ?? 0;
-        tool_datewatch_manager::process_event($event, $tablename, $tableid);
+        \tool_datewatch\manager::singleton()->process_event($event, $tablename, $tableid);
 
         if ($event instanceof \core\event\course_module_created ||
                 $event instanceof \core\event\course_module_updated ||
                 $event instanceof \core\event\course_module_deleted) {
             $tablename = (string)$event->other['modulename'];
             $tableid = (int)$event->other['instanceid'];
-            tool_datewatch_manager::process_event($event, $tablename, $tableid);
+            \tool_datewatch\manager::singleton()->process_event($event, $tablename, $tableid);
         }
     }
 }

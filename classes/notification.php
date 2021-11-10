@@ -26,7 +26,7 @@ namespace tool_datewatch;
 class notification {
     /** @var \tool_datewatch\task\watch */
     private $task;
-    /** @var \tool_datewatch_watcher */
+    /** @var \tool_datewatch\watcher */
     private $watcher;
     /** @var int */
     private $objectid;
@@ -47,11 +47,11 @@ class notification {
     /**
      * Initialiser (not to be used by the watchers)
      *
-     * @param \tool_datewatch_watcher $watcher
+     * @param \tool_datewatch\watcher $watcher
      * @param int $objectid
      * @param int $fieldvalue
      */
-    public function init(\tool_datewatch_watcher $watcher, int $objectid, int $fieldvalue): void {
+    public function init(\tool_datewatch\watcher $watcher, int $objectid, int $fieldvalue): void {
         $this->watcher = $watcher;
         $this->objectid = $objectid;
         $this->fieldvalue = $fieldvalue;
@@ -74,9 +74,9 @@ class notification {
      *
      * Can be useful if the plugin defines several watchers that use the same callback function
      *
-     * @return \tool_datewatch_watcher
+     * @return \tool_datewatch\watcher
      */
-    public function get_watcher(): \tool_datewatch_watcher {
+    public function get_watcher(): \tool_datewatch\watcher {
         return $this->watcher;
     }
 

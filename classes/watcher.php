@@ -87,8 +87,9 @@ final class watcher {
     public function __set($name, $value) {
         if ($name === 'component') {
             $this->component = clean_param($value, PARAM_COMPONENT);
+        } else {
+            debugging('Property '.$name.' does not exist or is not writable', DEBUG_DEVELOPER);
         }
-        debugging('Property '.$name.' does not exist or is not writable', DEBUG_DEVELOPER);
     }
 
     /**

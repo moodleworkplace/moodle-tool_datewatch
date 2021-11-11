@@ -88,6 +88,8 @@ class tool_datewatch_generator extends component_generator_base {
     /**
      * Register a watcher for this unittest
      *
+     * If this function is called remember to call {@see self::remove_watchers()} in the end of the test (or tearDown())
+     *
      * @param string $name specify name of the watcher - {@see self::register_watchers()}
      */
     public function register_watcher(string $name) {
@@ -100,9 +102,6 @@ class tool_datewatch_generator extends component_generator_base {
      */
     public function remove_watchers() {
         self::$watchers = [];
-        \tool_datewatch\manager::reset_caches();
-        (new tool_datewatch\task\watch())->execute();
-        \tool_datewatch\manager::reset_caches();
     }
 
     /**

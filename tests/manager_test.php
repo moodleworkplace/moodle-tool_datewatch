@@ -23,13 +23,6 @@
 class tool_datewatch_manager_testcase extends advanced_testcase {
 
     /**
-     * Before each test
-     */
-    public function setUp(): void {
-        $this->get_generator()->remove_watchers();
-    }
-
-    /**
      * After each test
      */
     public function tearDown(): void {
@@ -73,6 +66,9 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
         $this->getDataGenerator()->enrol_user($user2->id, $course2->id, 'student', 'manual', 0, $now - 5 * DAYSECS);
         // Enrolment that ends soon (no notification since it's less than 3 days in advance).
         $this->getDataGenerator()->enrol_user($user3->id, $course2->id, 'student', 'manual', 0, $now + 2 * DAYSECS);
+
+        // First execution of the watch task will remember the current date and will not index anything before it.
+        (new tool_datewatch\task\watch())->execute();
 
         // Register watcher and run scheduled task, the courses and enrolments should be indexed.
         $this->get_generator()->register_watcher('course');

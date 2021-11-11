@@ -31,10 +31,6 @@ class tool_datewatch_generator_testcase extends advanced_testcase {
         return $this->getDataGenerator()->get_plugin_generator('tool_datewatch');
     }
 
-    public function setUp(): void {
-        $this->resetAfterTest();
-    }
-
     public function tearDown(): void {
         $this->get_generator()->remove_watchers();
     }
@@ -44,6 +40,7 @@ class tool_datewatch_generator_testcase extends advanced_testcase {
      */
     public function test_register_watchers() {
         global $DB;
+        $this->resetAfterTest();
         (new tool_datewatch\task\watch())->execute();
         $this->get_generator()->register_watcher('course');
         (new tool_datewatch\task\watch())->execute();

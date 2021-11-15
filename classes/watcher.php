@@ -45,7 +45,7 @@ final class watcher {
     protected $identifier;
 
     /**
-     * Constructor, use {@link self::instance()} instead
+     * Constructor, use {@see self::instance()} instead
      */
     private function __construct() {
     }

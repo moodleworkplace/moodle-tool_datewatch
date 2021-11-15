@@ -49,7 +49,6 @@ class tool_datewatch_generator extends component_generator_base {
             $res[] = \tool_datewatch\watcher::instance('user_enrolments', 'timeend', - 3 * DAYSECS)
                 ->set_callback(function (\tool_datewatch\notification $notification) {
                     $uenrol = $notification->get_record();
-                    $enrol = $notification->get_snapshot('enrol', $record->enrolid);
                     self::send_message($uenrol->userid, 3);
                 });
         }

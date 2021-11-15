@@ -24,6 +24,7 @@ namespace tool_datewatch;
  * @property-read string $fieldname
  * @property-read int $offset
  * @property-read callable $callback
+ * @property-read mixed $identifier
  *
  * @package   tool_datewatch
  * @copyright 2016 Marina Glancy
@@ -40,9 +41,11 @@ final class watcher {
     protected $offset = 0;
     /** @var callable */
     protected $callback;
+    /** @var mixed */
+    protected $identifier;
 
     /**
-     * Constructor
+     * Constructor, use {@link self::instance()} instead
      */
     private function __construct() {
     }
@@ -78,7 +81,7 @@ final class watcher {
     }
 
     /**
-     * Sets the property value
+     * Sets the property value (only used by the datewatch manager to set the component)
      *
      * @param string $name
      * @param mixed $value
@@ -96,10 +99,26 @@ final class watcher {
      * Register callback that will be called when event occurs
      *
      * @param callable $callback accepts single parameter (\tool_datewatch\notification $notification)
-     * @return $this
+     * @return self
      */
     public function set_callback(callable $callback): self {
         $this->callback = $callback;
+        return $this;
+    }
+
+    /**
+     * Any identifier that the plugin wants to assign to this watcher
+     *
+     * This can be useful if multiple watchers have the same callback, then inside the callback
+     * the watcher identifier can be accessed as:
+     *
+     *     $notification->get_watcher()->identifier
+     *
+     * @param mixed $identifier
+     * @return self
+     */
+    public function set_identifier($identifier): self {
+        $this->identifier = $identifier;
         return $this;
     }
 

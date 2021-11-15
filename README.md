@@ -7,11 +7,13 @@ For example, plugins can monitor such things as "course enrolment ended", "somet
 Quick example: to execute callback every time the course starts put it in your plugin's lib.php:
 
 ```
-function YOURPLUGINNAME_datewatch(tool_datewatch_manager $manager) {
-    $manager->watch('course', 'startdate')
-        ->set_callback(function(int $courseid, int $startdate) {
+function YOURPLUGINNAME_datewatch() {
+    $watchers = [];
+    $watchers[] = \tool_datewatch\watcher::instance('course', 'startdate')
+        ->set_callback(function(\tool_datewatch\notification $notification) {
             // This callback will be executed from cron on each course start.
         });
+    return $watchers;
 }
 ```
 
@@ -37,60 +39,26 @@ tables - 'course_modules' and the module table ('assign', 'quiz', etc).
 ## How to use
 
 To use **Datewatch** your plugin needs to define the callback `PLUGINNAME_datewtach()` in the `lib.php` 
-that accepts an argument `tool_datewatch_manager $manager`. Your plugin can register as many watchers 
-as it needs by calling `$manager->watch()`. If your plugin needs to register several watchers for the same field,
-you need to assign them different short names.
-
-```
-function YOURPLUGINNAME_datewatch(tool_datewatch_manager $manager) {
-    $manager->watch('TABLENAME', 'FIELDNAME')->set_callback(...);
-}
-```
+that returns an array of `\tool_datewatch\watcher` instances.
 
 ### Examples:
 
 Watch when course enrolment has ended for a user and send them a notification:
 ```
-$manager->watch('user_enrolments', 'timeend')
-    ->set_callback(function($recordid) {
-        global $DB;
-        if ($record = $DB->get_record('user_enrolments', ['id' => $recordid])) {
-            $enrol = $DB->get_record('enrol', ['id' => $record->enrolid]);
-            YOURPLUGINNAME_send_notification_enrollment_ended($record->userid, $enrol->courseid);
+\tool_datewatch\watcher::instance('user_enrolments', 'timeend')
+    ->set_callback(function(\tool_datewatch\notification $notification) {
+        if ($userenrolment = $notification->get_record()) {
+            $enrol = $notification->get_snapshot('enrol', $userenrolment->enrolid);
+            YOURPLUGINNAME_send_notification_enrollment_ended($userenrolment->userid, $enrol->courseid);
         }
     });
-```
-
-Watch start date of any course in 'MYFORMAT' format and trigger custom event.
-
-```
-$manager->watch('course', 'startdate')
-    ->set_callback(function($courseid, $timestamp) {
-        $event = \format_MYFORMAT\event\course_started::create([
-            'objectid' => $courseid,
-            'context' => context_course::instance($courseid),
-            'other' => ['startdate' => $timestamp],
-        ])->trigger();
-    })
-    ->set_condition('format = :format', ['format' => 'MYFORMAT']);
-```
-        
-If the plugin needs to register several watchers for the same field it can assign a unique
-shortname to the watcher:
-
-```
-$manager->watch('course', 'startdate')
-    ->set_shortname('anothercoursewatcher')
-    ->set_callback(function() {
-        // ...
-    });    
 ```
 
 It is also possible to add an offset to the watched dates. Send notification 3 days before due date:
 
 ```
-$manager->watch('assign', 'duedate', - 3 * DAYSECS)
-    ->set_callback(function($assignid) {
+\tool_datewatch\watcher::instance('assign', 'duedate', - 3 * DAYSECS)
+    ->set_callback(function(\tool_datewatch\notification $notification) {
         // ...
     });
 ```

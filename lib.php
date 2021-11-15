@@ -32,4 +32,5 @@ function tool_datewatch_datewatch() {
         // Register watchers for unittests only.
         return tool_datewatch_generator::register_watchers();
     }
+    return [];
 }

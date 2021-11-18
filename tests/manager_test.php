@@ -77,8 +77,8 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
         (new tool_datewatch\task\watch())->execute();
 
         // Get the watchers ids from the db so we can query the upcoming table.
-        [$enrolwatcher, $coursewatcher] =
-            $DB->get_fieldset_sql('SELECT id from {tool_datewatch} ORDER BY id DESC LIMIT 2');
+        $records = $DB->get_records('tool_datewatch', null, 'id DESC', 'id', 0, 2);
+        [$enrolwatcher, $coursewatcher] = array_keys($records);
 
         // Assert the records in the upcoming table correspond to the courses and enrolments we have created.
         $this->assertEqualsCanonicalizing([$now + 2 * DAYSECS, $now + 10 * DAYSECS],

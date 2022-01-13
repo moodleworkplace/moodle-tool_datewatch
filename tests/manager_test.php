@@ -14,13 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+namespace tool_datewatch;
+
+use advanced_testcase;
+use tool_datewatch_generator;
+
 /**
  * Class generator_test
  *
  * @package     tool_datewatch
  * @copyright   2021 Marina Glancy
  */
-class tool_datewatch_manager_testcase extends advanced_testcase {
+class manager_test extends advanced_testcase {
 
     /**
      * After each test
@@ -68,13 +73,13 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
         $this->getDataGenerator()->enrol_user($user3->id, $course2->id, 'student', 'manual', 0, $now + 2 * DAYSECS);
 
         // First execution of the watch task will remember the current date and will not index anything before it.
-        (new tool_datewatch\task\watch())->execute();
+        (new \tool_datewatch\task\watch())->execute();
 
         // Register watcher and run scheduled task, the courses and enrolments should be indexed.
         $this->get_generator()->register_watcher('course');
         $this->get_generator()->register_watcher('user_enrolments');
         $this->get_generator()->register_watcher('enrolnotification');
-        (new tool_datewatch\task\watch())->execute();
+        (new \tool_datewatch\task\watch())->execute();
 
         // Get the watchers ids from the db so we can query the upcoming table.
         $records = $DB->get_records('tool_datewatch', null, 'id DESC', 'id', 0, 2);
@@ -98,7 +103,7 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
         $now = time();
 
         $this->get_generator()->register_watcher('course');
-        (new tool_datewatch\task\watch())->execute();
+        (new \tool_datewatch\task\watch())->execute();
 
         // Make sure the watcher for the course start date is created.
         $datewatch = $DB->get_record('tool_datewatch',
@@ -151,7 +156,7 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
 
         // Register the watcher that will notify us 3 days before any enrolment ends.
         $this->get_generator()->register_watcher('enrolnotification');
-        (new tool_datewatch\task\watch())->execute();
+        (new \tool_datewatch\task\watch())->execute();
 
         // Make sure the watcher for the course start date is created, there is nothing yet in upcoming table.
         $datewatch = $DB->get_record('tool_datewatch',
@@ -213,7 +218,7 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
         $now = time();
 
         $this->get_generator()->register_watcher('enrolnotification');
-        (new tool_datewatch\task\watch())->execute();
+        (new \tool_datewatch\task\watch())->execute();
 
         // Make sure the watcher for the course start date is created.
         $datewatch = $DB->get_record('tool_datewatch',
@@ -245,7 +250,7 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
 
         // Run cron - no messages, no changes to the upcoming table.
         $sink = $this->redirectMessages();
-        (new tool_datewatch\task\watch())->execute();
+        (new \tool_datewatch\task\watch())->execute();
         $messages = $sink->get_messages();
         $this->assertCount(0, $messages);
 
@@ -264,7 +269,7 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
 
         // Running cron will send a message to the user.
         $sink = $this->redirectMessages();
-        (new tool_datewatch\task\watch())->execute();
+        (new \tool_datewatch\task\watch())->execute();
         $messages = $sink->get_messages();
         $this->assertCount(1, $messages);
         $this->assertEquals($user1->id, $messages[0]->useridto);
@@ -272,7 +277,7 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
 
         // Run cron again, no messages will be sent.
         $sink = $this->redirectMessages();
-        (new tool_datewatch\task\watch())->execute();
+        (new \tool_datewatch\task\watch())->execute();
         $messages = $sink->get_messages();
         $this->assertCount(0, $messages);
     }
@@ -282,7 +287,7 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
 
         // Catching exception when reindexing.
         $this->get_generator()->register_watcher('broken');
-        (new tool_datewatch\task\watch())->execute();
+        (new \tool_datewatch\task\watch())->execute();
         $debugging = $this->getDebuggingMessages();
         $this->assertCount(1, $debugging);
         $debug = reset($debugging);
@@ -295,7 +300,7 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
         $this->resetAfterTest();
 
         $this->get_generator()->register_watcher('enrol_broken_callback');
-        (new tool_datewatch\task\watch())->execute();
+        (new \tool_datewatch\task\watch())->execute();
 
         // Create a course and enrolment.
         $course1 = $this->getDataGenerator()->create_course();
@@ -312,7 +317,7 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
             $this->get_generator()->shift_dates('user_enrolments', 'timeend', -$delta);
         }
 
-        (new tool_datewatch\task\watch())->execute();
+        (new \tool_datewatch\task\watch())->execute();
         $this->assertDebuggingCalled('Exception calling callback in the date watcher tool_datewatch / user_enrolments / timeend: '.
             'Coding error detected, it must be fixed by a programmer: Oops');
         $this->resetDebugging();
@@ -328,7 +333,7 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
         $now = time();
 
         $this->get_generator()->register_watcher('assign');
-        (new tool_datewatch\task\watch())->execute();
+        (new \tool_datewatch\task\watch())->execute();
         $datewatch = $DB->get_record('tool_datewatch', ['tablename' => 'assign']);
         $this->assertNotEmpty($datewatch);
 
@@ -378,7 +383,7 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
         $this->assertEquals($count, $DB->count_records('tool_datewatch_upcoming'));
 
         // Run index, one new record will be created.
-        (new tool_datewatch\task\watch())->execute();
+        (new \tool_datewatch\task\watch())->execute();
         $this->assertEquals($count + 1, $DB->count_records('tool_datewatch_upcoming'));
 
         // Next course we create will be added to the upcoming table.
@@ -394,7 +399,7 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
         // Register two watchers on the same table with different offsets.
         $this->get_generator()->register_watcher('enrolnotification');
         $this->get_generator()->register_watcher('enrolnotification5');
-        (new tool_datewatch\task\watch())->execute();
+        (new \tool_datewatch\task\watch())->execute();
 
         // Make sure the watcher for the course start date is created.
         $datewatch = $DB->get_record('tool_datewatch',
@@ -428,7 +433,7 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
 
         // Run cron - no messages, no changes to the upcoming table.
         $sink = $this->redirectMessages();
-        (new tool_datewatch\task\watch())->execute();
+        (new \tool_datewatch\task\watch())->execute();
         $messages = $sink->get_messages();
         $this->assertCount(0, $messages);
 
@@ -447,7 +452,7 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
 
         // Running cron will send a message to the user 1.
         $sink = $this->redirectMessages();
-        (new tool_datewatch\task\watch())->execute();
+        (new \tool_datewatch\task\watch())->execute();
         $messages = $sink->get_messages();
         $this->assertCount(1, $messages);
         $this->assertEquals($user1->id, $messages[0]->useridto);
@@ -463,7 +468,7 @@ class tool_datewatch_manager_testcase extends advanced_testcase {
 
         // Run cron again, message will be sent to user2.
         $sink = $this->redirectMessages();
-        (new tool_datewatch\task\watch())->execute();
+        (new \tool_datewatch\task\watch())->execute();
         $messages = $sink->get_messages();
         $this->assertCount(1, $messages);
         $this->assertEquals($user2->id, $messages[0]->useridto);

@@ -14,6 +14,7 @@ variables:
   MOODLE_BRANCH_LMS: master # TODO change to MOODLE_400_STABLE when released
   MOODLE_BRANCH_LMS311: MOODLE_311_STABLE
   MOODLE_BRANCH_LMS310: MOODLE_310_STABLE
+  MOODLE_BRANCH_LMS39: MOODLE_39_STABLE
   MOODLE_BEHAT_WDHOST: "http://selenium-standalone-chrome:4444/wd/hub"
   POSTGRES_USER: postgres
   POSTGRES_PASSWORD: ""
@@ -93,6 +94,16 @@ lms:
   before_script:
     - export MOODLE_REPO=$MOODLE_REPO_LMS
     - export MOODLE_BRANCH=$MOODLE_BRANCH_LMS
+  <<: *scriptshorttest
+  except:
+    - master
+    - tags
+    - /^WORKPLACE_\d+$/
+
+lms39:
+  before_script:
+    - export MOODLE_REPO=$MOODLE_REPO_LMS
+    - export MOODLE_BRANCH=$MOODLE_BRANCH_LMS39
   <<: *scriptshorttest
   except:
     - master

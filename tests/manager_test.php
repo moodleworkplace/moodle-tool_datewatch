@@ -23,6 +23,10 @@ use tool_datewatch_generator;
  * Class generator_test
  *
  * @package     tool_datewatch
+ * @covers      \tool_datewatch\manager
+ * @covers      \tool_datewatch\notification
+ * @covers      \tool_datewatch\watcher
+ * @covers      \tool_datewatch_observer
  * @copyright   2021 Marina Glancy
  */
 class manager_test extends advanced_testcase {

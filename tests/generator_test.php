@@ -23,6 +23,7 @@ use tool_datewatch_generator;
  * Class generator_test
  *
  * @package     tool_datewatch
+ * @covers \tool_datewatch_generator
  * @copyright   2021 Marina Glancy
  */
 class generator_test extends advanced_testcase {

@@ -25,8 +25,8 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'tool_datewatch';
-$plugin->release   = '3.11.7';
-$plugin->version   = 2022031510;
+$plugin->release   = '4.0';
+$plugin->version   = 2022101400;
 $plugin->requires  = 2020061500.00;
 $plugin->maturity  = MATURITY_STABLE;
 $plugin->supported = [39, 400];

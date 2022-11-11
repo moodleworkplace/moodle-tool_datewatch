@@ -11,7 +11,8 @@ variables:
   MOODLE_BRANCH_WORKPLACE: master
   MOODLE_BRANCH_WORKPLACE311: WORKPLACE_311
   MOODLE_REPO_LMS: git@git.in.moodle.com:moodle/moodle.git
-  MOODLE_BRANCH_LMS: MOODLE_400_STABLE
+  MOODLE_BRANCH_LMS401: master # TODO WP-3904 change to MOODLE_401_STABLE
+  MOODLE_BRANCH_LMS400: MOODLE_400_STABLE
   MOODLE_BRANCH_LMS311: MOODLE_311_STABLE
   MOODLE_BRANCH_LMS310: MOODLE_310_STABLE
   MOODLE_BRANCH_LMS39: MOODLE_39_STABLE
@@ -92,16 +93,6 @@ wp311:
     - tags
     - /^WORKPLACE_\d+$/
 
-lms:
-  before_script:
-    - export MOODLE_REPO=$MOODLE_REPO_LMS
-    - export MOODLE_BRANCH=$MOODLE_BRANCH_LMS
-  <<: *scriptshorttest
-  except:
-    - master
-    - tags
-    - /^WORKPLACE_\d+$/
-
 lms39:
   before_script:
     - export MOODLE_REPO=$MOODLE_REPO_LMS
@@ -126,6 +117,26 @@ lms311:
   before_script:
     - export MOODLE_REPO=$MOODLE_REPO_LMS
     - export MOODLE_BRANCH=$MOODLE_BRANCH_LMS311
+  <<: *scriptshorttest
+  except:
+    - master
+    - tags
+    - /^WORKPLACE_\d+$/
+
+lms400:
+  before_script:
+    - export MOODLE_REPO=$MOODLE_REPO_LMS
+    - export MOODLE_BRANCH=$MOODLE_BRANCH_LMS400
+  <<: *scriptshorttest
+  except:
+    - master
+    - tags
+    - /^WORKPLACE_\d+$/
+
+lms401:
+  before_script:
+    - export MOODLE_REPO=$MOODLE_REPO_LMS
+    - export MOODLE_BRANCH=$MOODLE_BRANCH_LMS401
   <<: *scriptshorttest
   except:
     - master

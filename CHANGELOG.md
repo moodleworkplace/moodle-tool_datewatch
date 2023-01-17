@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.1.1 - 2023-01-17
+### Changed
+- Added testing branches (no functional changes)
+
 ## 4.0.5 - 2022-11-15
 ### Changed
 - Added testing on LMS 4.1 (no functional changes)

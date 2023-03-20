@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+### Changed
+- Fixed exception when add-on plugins trigger events with properties of incorrect type
+
 ## 4.1.1 - 2023-01-17
 ### Changed
 - Added testing branches (no functional changes)

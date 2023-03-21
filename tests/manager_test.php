@@ -479,4 +479,20 @@ class manager_test extends advanced_testcase {
         $this->assertEquals('Your enrolment will end in 5 days', $messages[0]->subject);
     }
 
+    public function test_invalid_data() {
+        global $DB, $USER;
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        // Register a watcher.
+        $this->get_generator()->register_watcher('enrolnotification');
+        (new \tool_datewatch\task\watch())->execute();
+
+        // Trigger an event with invalid data - objectid must be an int but a string is passed.
+        $eventparams = ['context' => \context_user::instance($USER->id), 'objectid' => ''];
+        $event = \core\event\dashboards_reset::create($eventparams);
+        $event->trigger();
+
+        // No assertions here, just make sure there are no exceptions or debugging messages.
+    }
 }

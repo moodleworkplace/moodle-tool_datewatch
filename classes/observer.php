@@ -33,8 +33,8 @@ class tool_datewatch_observer {
         if ($event->crud !== 'c' && $event->crud !== 'u' && $event->crud !== 'd') {
             return;
         }
-        $tablename = $event->objecttable ?? '';
-        $tableid = $event->objectid ?? 0;
+        $tablename = (string)$event->objecttable;
+        $tableid = (int)$event->objectid;
         \tool_datewatch\manager::singleton()->process_event($event, $tablename, $tableid);
 
         if ($event instanceof \core\event\course_module_created ||

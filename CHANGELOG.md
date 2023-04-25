@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased
+## 4.1.3 - 2023-04-25
+### Added
+- Compatibility with Moodle LMS 4.2
+- Ensure compatibility with PHP 8.1 for Moodle LMS 4.1 and 4.2
 ### Changed
 - Fixed exception when add-on plugins trigger events with properties of incorrect type
 

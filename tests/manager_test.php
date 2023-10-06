@@ -172,7 +172,7 @@ class manager_test extends advanced_testcase {
         // Create course and two users.
         $course1 = $this->getDataGenerator()->create_course();
         $manual1 = $DB->get_record('enrol', ['courseid' => $course1->id, 'enrol' => 'manual'], '*', MUST_EXIST);
-        $roleid = $DB->get_field('role', 'id', array('shortname' => 'student'), MUST_EXIST);
+        $roleid = $DB->get_field('role', 'id', ['shortname' => 'student'], MUST_EXIST);
         $user1 = $this->getDataGenerator()->create_user();
         $user2 = $this->getDataGenerator()->create_user();
         $manplugin = enrol_get_plugin('manual');

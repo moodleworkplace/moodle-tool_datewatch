@@ -24,10 +24,10 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$observers = array(
-    array(
+$observers = [
+    [
         'eventname' => '*',
         'callback'  => 'tool_datewatch_observer::date_changed',
         'priority'  => 800,
-    ),
-);
+    ],
+];

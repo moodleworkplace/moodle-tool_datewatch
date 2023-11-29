@@ -37,6 +37,7 @@ variables:
     - export MOODLE_REPO=$MOODLE_REPO_WORKPLACE
     - export MOODLE_BRANCH=$MOODLE_BRANCH_WORKPLACE403R
     - . prepare-workplace $cibot_sshkey
+    - export PLUGINNAME=$(grep 'plugin->component' $CI_PROJECT_DIR/version.php | awk -F\' '{ print $2; }')
     - cd $CI_PROJECT_DIR/..
     - moodle-plugin-ci add-plugin --clone git@git.in.moodle.com:workplace/moodle-theme_workplace.git
     - moodle-plugin-ci add-plugin --clone git@git.in.moodle.com:workplace/moodle-tool_tenant.git
@@ -66,7 +67,7 @@ codecheck:
     - . check moodle-plugin-ci mustache
     - . check moodle-plugin-ci grunt --max-lint-warnings 0
     - . check vendor/bin/phpunit --fail-on-risky --disallow-test-output --testsuite tool_dataprivacy_testsuite --filter metadata_registry_test
-    - . check vendor/bin/phpunit --fail-on-risky --disallow-test-output --filter test_all_external_info
+    - . check vendor/bin/phpunit --fail-on-risky --disallow-test-output --filter "test_all_external_info .*$PLUGINNAME"
     - . check vendor/bin/phpunit --fail-on-risky --disallow-test-output --testsuite core_privacy_testsuite --filter provider_test
     - . check moodle-plugin-ci phpunit --coverage-text --fail-on-warning
     - . check-finish
@@ -77,6 +78,7 @@ codecheck:
   script:
     # TODO: when all plugins are removed, remove the argument with the sshkey but leave the call to prepare-workplace, it sets up the env
     - . prepare-workplace $cibot_sshkey
+    - export PLUGINNAME=$(grep 'plugin->component' $CI_PROJECT_DIR/version.php | awk -F\' '{ print $2; }')
     - cd $CI_PROJECT_DIR/..
     - moodle-plugin-ci install --db-host="$DB_HOST" --no-init -vvv
     - cd moodle

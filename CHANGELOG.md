@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+### Fixed
+- Coding style fixes to comply with moodle-plugin-ci 4.4.0
+
 ## 4.3 - 2023-11-09
 ### Added
 - Testing on Workplace 4.3

@@ -8,6 +8,7 @@ services:
 
 variables:
   MOODLE_REPO_WORKPLACE: git@git.in.moodle.com:workplace/workplacedev.git
+  MOODLE_BRANCH_WORKPLACE404R: WORKPLACE_ROLLING_404
   MOODLE_BRANCH_WORKPLACE403R: WORKPLACE_ROLLING_403
   MOODLE_BRANCH_WORKPLACE403S: WORKPLACE_403
   MOODLE_BRANCH_WORKPLACE402R: WORKPLACE_ROLLING_402
@@ -16,6 +17,7 @@ variables:
   MOODLE_BRANCH_WORKPLACE400: WORKPLACE_400
   MOODLE_BRANCH_WORKPLACE311: WORKPLACE_311
   MOODLE_REPO_LMS: git@git.in.moodle.com:moodle/moodle.git
+  MOODLE_BRANCH_LMS404: main # TODO WPOS-92 replace with MOODLE_404_STABLE when it is created
   MOODLE_BRANCH_LMS403: MOODLE_403_STABLE
   MOODLE_BRANCH_LMS402: MOODLE_402_STABLE
   MOODLE_BRANCH_LMS401: MOODLE_401_STABLE
@@ -35,18 +37,19 @@ variables:
 .setupworkplace: &setupworkplace
   before_script:
     - export MOODLE_REPO=$MOODLE_REPO_WORKPLACE
-    - export MOODLE_BRANCH=$MOODLE_BRANCH_WORKPLACE403R
+    - export MOODLE_BRANCH=$MOODLE_BRANCH_WORKPLACE404R
     - . prepare-workplace $cibot_sshkey
     - export PLUGINNAME=$(grep 'plugin->component' $CI_PROJECT_DIR/version.php | awk -F\' '{ print $2; }')
     - cd $CI_PROJECT_DIR/..
-    - moodle-plugin-ci add-plugin --clone git@git.in.moodle.com:workplace/moodle-theme_workplace.git
-    - moodle-plugin-ci add-plugin --clone git@git.in.moodle.com:workplace/moodle-tool_tenant.git
-    - moodle-plugin-ci add-plugin --clone git@git.in.moodle.com:workplace/moodle-tool_wp.git
-    - moodle-plugin-ci add-plugin --clone git@git.in.moodle.com:workplace/moodle-tool_dynamicrule.git
+    - moodle-plugin-ci add-plugin --clone git@git.in.moodle.com:workplace/moodle-theme_workplace.git --branch WP-4740
+    - moodle-plugin-ci add-plugin --clone git@git.in.moodle.com:workplace/moodle-tool_tenant.git --branch WP-4740
+    - moodle-plugin-ci add-plugin --clone git@git.in.moodle.com:workplace/moodle-tool_wp.git --branch WP-4740
+    - moodle-plugin-ci add-plugin --clone git@git.in.moodle.com:workplace/moodle-tool_dynamicrule.git --branch WP-4740
     - moodle-plugin-ci install --db-host="$DB_HOST" --no-init -vvv
     - cd moodle
 
 codecheck:
+  image: moodlehq/moodle-workplace-plugin-ci:8.1
   <<: *setupworkplace
   script:
     - php admin/tool/phpunit/cli/init.php
@@ -90,6 +93,16 @@ codecheck:
     - . check moodle-plugin-ci phpunit --coverage-text --fail-on-warning
     #- . check moodle-plugin-ci behat --suite default --profile chrome
     - . check-finish
+
+wp403r:
+  before_script:
+    - export MOODLE_REPO=$MOODLE_REPO_WORKPLACE
+    - export MOODLE_BRANCH=$MOODLE_BRANCH_WORKPLACE403R
+  <<: *scriptshorttest
+  except:
+    - master
+    - tags
+    - /^WORKPLACE_\d+$/
 
 wp403s:
   before_script:
@@ -217,6 +230,17 @@ lms403:
   before_script:
     - export MOODLE_REPO=$MOODLE_REPO_LMS
     - export MOODLE_BRANCH=$MOODLE_BRANCH_LMS403
+  <<: *scriptshorttest
+  except:
+    - master
+    - tags
+    - /^WORKPLACE_\d+$/
+
+lms404:
+  image: moodlehq/moodle-workplace-plugin-ci:8.1
+  before_script:
+    - export MOODLE_REPO=$MOODLE_REPO_LMS
+    - export MOODLE_BRANCH=$MOODLE_BRANCH_LMS404
   <<: *scriptshorttest
   except:
     - master

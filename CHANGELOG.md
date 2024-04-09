@@ -1,8 +1,8 @@
 # Changelog
 
 ## Unreleased
-### Fixed
-- Coding style fixes to comply with moodle-plugin-ci 4.4.0
+### Added
+- Compatibility with Moodle 4.4, added to the testing matrix
 
 ## 4.3 - 2023-11-09
 ### Added

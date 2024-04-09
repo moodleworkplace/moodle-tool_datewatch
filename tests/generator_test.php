@@ -25,8 +25,9 @@ use tool_datewatch_generator;
  * @package     tool_datewatch
  * @covers \tool_datewatch_generator
  * @copyright   2021 Marina Glancy
+ * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class generator_test extends advanced_testcase {
+final class generator_test extends advanced_testcase {
 
     /**
      * Get dynamic rule generator
@@ -44,7 +45,7 @@ class generator_test extends advanced_testcase {
     /**
      * Testing resistering and unregistering watchers.
      */
-    public function test_register_watchers() {
+    public function test_register_watchers(): void {
         global $DB;
         $this->resetAfterTest();
         (new \tool_datewatch\task\watch())->execute();

@@ -28,8 +28,9 @@ use tool_datewatch_generator;
  * @covers      \tool_datewatch\watcher
  * @covers      \tool_datewatch_observer
  * @copyright   2021 Marina Glancy
+ * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class manager_test extends advanced_testcase {
+final class manager_test extends advanced_testcase {
 
     /**
      * After each test
@@ -54,7 +55,7 @@ class manager_test extends advanced_testcase {
     /**
      * Test initial re-indexing when watchers are registered.
      */
-    public function test_watchers_reindex() {
+    public function test_watchers_reindex(): void {
         global $DB;
         $this->resetAfterTest();
         $now = time();
@@ -101,7 +102,7 @@ class manager_test extends advanced_testcase {
      *
      * Watcher without offset
      */
-    public function test_update_upcoming() {
+    public function test_update_upcoming(): void {
         global $DB;
         $this->resetAfterTest();
         $now = time();
@@ -153,7 +154,7 @@ class manager_test extends advanced_testcase {
      *
      * Watcher without offset
      */
-    public function test_update_upcoming_with_offset() {
+    public function test_update_upcoming_with_offset(): void {
         global $DB;
         $this->resetAfterTest();
         $now = time();
@@ -216,7 +217,7 @@ class manager_test extends advanced_testcase {
     /**
      * Test that callback is executed when event occurs.
      */
-    public function test_datewatch_notifications() {
+    public function test_datewatch_notifications(): void {
         global $DB;
         $this->resetAfterTest();
         $now = time();
@@ -286,7 +287,7 @@ class manager_test extends advanced_testcase {
         $this->assertCount(0, $messages);
     }
 
-    public function test_broken_watcher() {
+    public function test_broken_watcher(): void {
         $this->resetAfterTest();
 
         // Catching exception when reindexing.
@@ -299,7 +300,7 @@ class manager_test extends advanced_testcase {
         $this->resetDebugging();
     }
 
-    public function test_watcher_broken_callback() {
+    public function test_watcher_broken_callback(): void {
         global $DB;
         $this->resetAfterTest();
 
@@ -330,7 +331,7 @@ class manager_test extends advanced_testcase {
     /**
      * Test watching a date in the course module table 'assign' that does not have its own events
      */
-    public function test_watch_course_module() {
+    public function test_watch_course_module(): void {
         global $DB;
         $this->resetAfterTest();
         $this->setAdminUser();
@@ -373,7 +374,7 @@ class manager_test extends advanced_testcase {
     /**
      * Datewatch ignores events triggered before first reindexing
      */
-    public function test_event_before_index() {
+    public function test_event_before_index(): void {
         global $DB;
         $this->resetAfterTest();
         $now = time();
@@ -395,7 +396,7 @@ class manager_test extends advanced_testcase {
         $this->assertEquals($count + 2, $DB->count_records('tool_datewatch_upcoming'));
     }
 
-    public function test_multiple_watchers() {
+    public function test_multiple_watchers(): void {
         global $DB;
         $this->resetAfterTest();
         $now = time();
@@ -479,7 +480,7 @@ class manager_test extends advanced_testcase {
         $this->assertEquals('Your enrolment will end in 5 days', $messages[0]->subject);
     }
 
-    public function test_invalid_data() {
+    public function test_invalid_data(): void {
         global $DB, $USER;
         $this->resetAfterTest();
         $this->setAdminUser();

@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.4 - 2024-05-21
+### Changed
+- Only changes to the plugin release process
+
 ## 4.3.4 - 2024-04-23
 ### Added
 - Compatibility with Moodle 4.4, added to the testing matrix

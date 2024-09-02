@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.4.3 - 2024-09-03
+### Changed
+- Only changes to automatic testing scripts
+
 ## 4.4 - 2024-05-21
 ### Changed
 - Only changes to the plugin release process

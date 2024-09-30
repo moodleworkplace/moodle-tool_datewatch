@@ -8,6 +8,7 @@ services:
 
 variables:
   MOODLE_REPO_WORKPLACE: git@git.in.moodle.com:workplace/workplacedev.git
+  MOODLE_BRANCH_WORKPLACE405R: WORKPLACE_ROLLING_405
   MOODLE_BRANCH_WORKPLACE404R: WORKPLACE_ROLLING_404
   MOODLE_BRANCH_WORKPLACE404S: WORKPLACE_404
   MOODLE_BRANCH_WORKPLACE403R: WORKPLACE_ROLLING_403
@@ -37,7 +38,7 @@ variables:
 .setupworkplace: &setupworkplace
   before_script:
     - export MOODLE_REPO=$MOODLE_REPO_WORKPLACE
-    - export MOODLE_BRANCH=$MOODLE_BRANCH_WORKPLACE404R
+    - export MOODLE_BRANCH=$MOODLE_BRANCH_WORKPLACE405R
     - . prepare-workplace $cibot_sshkey
     - export PLUGINNAME=$(grep 'plugin->component' $CI_PROJECT_DIR/version.php | awk -F\' '{ print $2; }')
     - cd $CI_PROJECT_DIR/..
@@ -93,6 +94,17 @@ codecheck:
     - . check moodle-plugin-ci phpunit --coverage-text --fail-on-warning
     #- . check moodle-plugin-ci behat --suite default --profile chrome
     - . check-finish
+
+wp404r:
+  image: moodlehq/moodle-workplace-plugin-ci:8.1
+  before_script:
+    - export MOODLE_REPO=$MOODLE_REPO_WORKPLACE
+    - export MOODLE_BRANCH=$MOODLE_BRANCH_WORKPLACE404R
+  <<: *scriptshorttest
+  except:
+    - master
+    - tags
+    - /^WORKPLACE_(ROLLING_)?\d+$/
 
 wp404s:
   image: moodlehq/moodle-workplace-plugin-ci:8.1

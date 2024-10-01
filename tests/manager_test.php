@@ -36,6 +36,7 @@ final class manager_test extends advanced_testcase {
      * After each test
      */
     public function tearDown(): void {
+        parent::tearDown();
         $this->get_generator()->remove_watchers();
         if (extension_loaded('uopz')) {
             // Revert function overrides.

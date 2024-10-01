@@ -39,6 +39,7 @@ final class generator_test extends advanced_testcase {
     }
 
     public function tearDown(): void {
+        parent::tearDown();
         $this->get_generator()->remove_watchers();
     }
 

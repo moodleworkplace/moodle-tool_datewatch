@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.5.4 - 2025-05-15
+### Changed
+- Only changes to automatic testing scripts
+
 ## 4.4.4 - 2024-10-08
 ### Added
 - Compatibility with Moodle 4.5; Updates to version testing matrices

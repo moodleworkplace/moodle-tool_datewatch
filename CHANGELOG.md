@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.0 - 2025-04-14
+### Added
+- Added support for Moodle 5.0
+
 ## 4.4.4 - 2024-10-08
 ### Added
 - Compatibility with Moodle 4.5; Updates to version testing matrices

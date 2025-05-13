@@ -80,15 +80,14 @@ codecheck:
     #- . check moodle-plugin-ci behat --suite default --profile chrome
     - . check-finish
 
-# wp500s:
-#   before_script:
-#     - export MOODLE_REPO=$MOODLE_REPO_WORKPLACE
-#     - export MOODLE_BRANCH=$MOODLE_BRANCH_WORKPLACE500S
-#   <<: *scriptshorttest
-#   except:
-#     - master
-#     - tags
-#     - /^WORKPLACE_(ROLLING_)?\d+$/
+wp500s:
+  before_script:
+    - export MOODLE_REPO=$MOODLE_REPO_WORKPLACE
+    - export MOODLE_BRANCH=$MOODLE_BRANCH_WORKPLACE500S
+  <<: *scriptshorttest
+  except:
+    - tags
+    - /^MOODLE_\d+_STABLE$/
 
 lms500:
   before_script:
@@ -96,6 +95,5 @@ lms500:
     - export MOODLE_BRANCH=$MOODLE_BRANCH_LMS500
   <<: *scriptshorttest
   except:
-    - master
     - tags
-    - /^WORKPLACE_(ROLLING_)?\d+$/
+    - /^MOODLE_\d+_STABLE$/

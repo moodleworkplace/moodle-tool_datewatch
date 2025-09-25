@@ -16,6 +16,7 @@
 
 namespace tool_datewatch;
 
+use core\{clock, di};
 use stdClass;
 
 /**
@@ -154,13 +155,13 @@ class manager {
      */
     protected function register_watcher(stdClass $record): stdClass {
         global $DB;
-        $record->lastcheck = time();
+        $record->lastcheck = di::get(clock::class)->time();
         $record->id = $DB->insert_record('tool_datewatch', $record);
         $sql = "INSERT INTO {tool_datewatch_upcoming} (datewatchid, objectid, value)
                 SELECT :datewatchid, id, ".$record->fieldname."
                 FROM {".$record->tablename."}
                 WHERE ".$record->fieldname." >= :minvalue";
-        $params = ['datewatchid' => $record->id, 'minvalue' => time() - $record->maxoffset];
+        $params = ['datewatchid' => $record->id, 'minvalue' => di::get(clock::class)->time() - $record->maxoffset];
         try {
             $DB->execute($sql, $params);
         } catch (\Exception $ex) {
@@ -244,7 +245,7 @@ class manager {
                 ($record = $event->get_record_snapshot($tablename, $tableid))) {
             foreach ($dbwatchers as $id => $dbwatcher) {
                 $value = (int)($record->{$dbwatcher->fieldname} ?? 0);
-                if ($value + $dbwatcher->maxoffset >= time()) {
+                if ($value + $dbwatcher->maxoffset >= di::get(clock::class)->time()) {
                     $upcoming[] = [
                         'datewatchid' => $id,
                         'objectid' => $record->id,
@@ -274,7 +275,7 @@ class manager {
                         $toupdate[] = [
                             'id' => $c->id,
                             'value' => $u['value'],
-                            'notified' => ($u['value'] > time() - MINSECS) ? 0 : 1,
+                            'notified' => ($u['value'] > di::get(clock::class)->time() - MINSECS) ? 0 : 1,
                         ];
                     }
                     unset($todelete[$c->id]);
@@ -289,7 +290,7 @@ class manager {
         }
         if ($toinsert) {
             $toinsert = array_filter($toinsert, function($element) {
-                return $element['value'] > time() - MINSECS;
+                return $element['value'] > di::get(clock::class)->time() - MINSECS;
             });
             if ($toinsert) {
                 $DB->insert_records('tool_datewatch_upcoming', $toinsert);
@@ -314,7 +315,7 @@ class manager {
             return;
         }
 
-        $now = time();
+        $now = di::get(clock::class)->time();
         sleep(1); // To prevent race conditions when some record was updated/inserted at the same second by another process.
 
         $notification = new \tool_datewatch\notification($task);

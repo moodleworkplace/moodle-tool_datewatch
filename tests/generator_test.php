@@ -30,7 +30,7 @@ use tool_datewatch_generator;
 final class generator_test extends advanced_testcase {
 
     /**
-     * Get dynamic rule generator
+     * Get plugin generator
      *
      * @return tool_datewatch_generator
      */

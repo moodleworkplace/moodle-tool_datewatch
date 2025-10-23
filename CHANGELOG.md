@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+### Changed
+- Updated all time and date handling to use the new Clock API
+- In doing so, all usage of the uopz extension has been removed
+
 ## 5.0.3 - 2025-10-07
 ### Added
 - Added support for Moodle 5.1

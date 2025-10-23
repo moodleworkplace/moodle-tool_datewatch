@@ -17,6 +17,7 @@
 namespace tool_datewatch;
 
 use advanced_testcase;
+use core\clock;
 use tool_datewatch_generator;
 
 /**
@@ -32,16 +33,23 @@ use tool_datewatch_generator;
  */
 final class manager_test extends advanced_testcase {
 
+    /** @var clock $clock */
+    private readonly clock $clock;
+
+    /**
+     * setUp.
+     */
+    public function setUp(): void {
+        parent::setUp();
+        $this->clock = $this->mock_clock_with_frozen();
+    }
+
     /**
      * After each test
      */
     public function tearDown(): void {
         parent::tearDown();
         $this->get_generator()->remove_watchers();
-        if (extension_loaded('uopz')) {
-            // Revert function overrides.
-            uopz_unset_return('time');
-        }
     }
 
     /**
@@ -59,7 +67,7 @@ final class manager_test extends advanced_testcase {
     public function test_watchers_reindex(): void {
         global $DB;
         $this->resetAfterTest();
-        $now = time();
+        $now = $this->clock->time();
 
         // Create courses and enrolments.
         $course1 = $this->getDataGenerator()->create_course();
@@ -106,7 +114,7 @@ final class manager_test extends advanced_testcase {
     public function test_update_upcoming(): void {
         global $DB;
         $this->resetAfterTest();
-        $now = time();
+        $now = $this->clock->time();
 
         $this->get_generator()->register_watcher('course');
         (new \tool_datewatch\task\watch())->execute();
@@ -158,7 +166,7 @@ final class manager_test extends advanced_testcase {
     public function test_update_upcoming_with_offset(): void {
         global $DB;
         $this->resetAfterTest();
-        $now = time();
+        $now = $this->clock->time();
 
         // Register the watcher that will notify us 3 days before any enrolment ends.
         $this->get_generator()->register_watcher('enrolnotification');
@@ -221,7 +229,7 @@ final class manager_test extends advanced_testcase {
     public function test_datewatch_notifications(): void {
         global $DB;
         $this->resetAfterTest();
-        $now = time();
+        $now = $this->clock->time();
 
         $this->get_generator()->register_watcher('enrolnotification');
         (new \tool_datewatch\task\watch())->execute();
@@ -267,11 +275,7 @@ final class manager_test extends advanced_testcase {
 
         // Timetravel by 2 days.
         $delta = 2 * DAYSECS + MINSECS;
-        if (extension_loaded('uopz')) {
-            uopz_set_return('time', $now + $delta);
-        } else {
-            $this->get_generator()->shift_dates('user_enrolments', 'timeend', -$delta);
-        }
+        $this->clock->bump($delta);
 
         // Running cron will send a message to the user.
         $sink = $this->redirectMessages();
@@ -311,17 +315,14 @@ final class manager_test extends advanced_testcase {
         // Create a course and enrolment.
         $course1 = $this->getDataGenerator()->create_course();
         $user1 = $this->getDataGenerator()->create_user();
-        $this->getDataGenerator()->enrol_user($user1->id, $course1->id, 'student', 'manual', 0, time() + 5 * DAYSECS);
+        $this->getDataGenerator()->enrol_user($user1->id, $course1->id, 'student', 'manual', 0,
+            $this->clock->time() + 5 * DAYSECS);
         $enrol1 = $DB->get_record_sql('SELECT * FROM {user_enrolments} WHERE userid=? ORDER BY id DESC',
             [$user1->id], IGNORE_MULTIPLE);
 
         // Timetravel by 5 days.
         $delta = 5 * DAYSECS + MINSECS;
-        if (extension_loaded('uopz')) {
-            uopz_set_return('time', time() + $delta);
-        } else {
-            $this->get_generator()->shift_dates('user_enrolments', 'timeend', -$delta);
-        }
+        $this->clock->bump($delta);
 
         (new \tool_datewatch\task\watch())->execute();
         $this->assertDebuggingCalled('Exception calling callback in the date watcher tool_datewatch / user_enrolments / timeend: '.
@@ -336,7 +337,7 @@ final class manager_test extends advanced_testcase {
         global $DB;
         $this->resetAfterTest();
         $this->setAdminUser();
-        $now = time();
+        $now = $this->clock->time();
 
         $this->get_generator()->register_watcher('assign');
         (new \tool_datewatch\task\watch())->execute();
@@ -378,7 +379,7 @@ final class manager_test extends advanced_testcase {
     public function test_event_before_index(): void {
         global $DB;
         $this->resetAfterTest();
-        $now = time();
+        $now = $this->clock->time();
 
         $this->get_generator()->register_watcher('course');
         $count = $DB->count_records('tool_datewatch_upcoming');
@@ -400,7 +401,7 @@ final class manager_test extends advanced_testcase {
     public function test_multiple_watchers(): void {
         global $DB;
         $this->resetAfterTest();
-        $now = time();
+        $now = $this->clock->time();
 
         // Register two watchers on the same table with different offsets.
         $this->get_generator()->register_watcher('enrolnotification');
@@ -450,11 +451,7 @@ final class manager_test extends advanced_testcase {
 
         // Timetravel by 2 days.
         $delta1 = 2 * DAYSECS + MINSECS;
-        if (extension_loaded('uopz')) {
-            uopz_set_return('time', $now + $delta1);
-        } else {
-            $this->get_generator()->shift_dates('user_enrolments', 'timeend', -$delta1);
-        }
+        $this->clock->bump($delta1);
 
         // Running cron will send a message to the user 1.
         $sink = $this->redirectMessages();
@@ -466,11 +463,7 @@ final class manager_test extends advanced_testcase {
 
         // Timetravel by 4 more days.
         $delta2 = 4 * DAYSECS + MINSECS;
-        if (extension_loaded('uopz')) {
-            uopz_set_return('time', $now + $delta1 + $delta2);
-        } else {
-            $this->get_generator()->shift_dates('user_enrolments', 'timeend', - $delta2);
-        }
+        $this->clock->bump($delta2);
 
         // Run cron again, message will be sent to user2.
         $sink = $this->redirectMessages();

@@ -37,9 +37,11 @@ class tool_datewatch_observer {
         $tableid = (int)$event->objectid;
         \tool_datewatch\manager::singleton()->process_event($event, $tablename, $tableid);
 
-        if ($event instanceof \core\event\course_module_created ||
+        if (
+            $event instanceof \core\event\course_module_created ||
                 $event instanceof \core\event\course_module_updated ||
-                $event instanceof \core\event\course_module_deleted) {
+                $event instanceof \core\event\course_module_deleted
+        ) {
             $tablename = (string)$event->other['modulename'];
             $tableid = (int)$event->other['instanceid'];
             \tool_datewatch\manager::singleton()->process_event($event, $tablename, $tableid);

@@ -76,7 +76,7 @@ final class watcher {
         if (property_exists($this, $name)) {
             return $this->$name;
         }
-        debugging('Property '.$name.' does not exist', DEBUG_DEVELOPER);
+        debugging('Property ' . $name . ' does not exist', DEBUG_DEVELOPER);
         return null;
     }
 
@@ -91,7 +91,7 @@ final class watcher {
         if ($name === 'component') {
             $this->component = clean_param($value, PARAM_COMPONENT);
         } else {
-            debugging('Property '.$name.' does not exist or is not writable', DEBUG_DEVELOPER);
+            debugging('Property ' . $name . ' does not exist or is not writable', DEBUG_DEVELOPER);
         }
     }
 

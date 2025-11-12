@@ -31,7 +31,6 @@ namespace tool_datewatch\task;
  * @copyright 2016 Marina Glancy
  */
 class watch extends \core\task\scheduled_task {
-
     /** @var string */
     protected $idnumber;
 

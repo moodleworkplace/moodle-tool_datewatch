@@ -34,7 +34,7 @@ class tool_datewatch_generator extends component_generator_base {
         $res = [];
         if (in_array('course', self::$watchers)) {
             $res[] = \tool_datewatch\watcher::instance('course', 'startdate')
-                ->set_callback(function() {
+                ->set_callback(function () {
                     null;
                 });
         }
@@ -64,7 +64,7 @@ class tool_datewatch_generator extends component_generator_base {
 
         if (in_array('broken', self::$watchers)) {
             $res[] = \tool_datewatch\watcher::instance('course', 'nonexistingfield')
-                ->set_callback(function() {
+                ->set_callback(function () {
                     null;
                 });
         }
@@ -78,7 +78,7 @@ class tool_datewatch_generator extends component_generator_base {
 
         if (in_array('assign', self::$watchers)) {
             $res[] = \tool_datewatch\watcher::instance('assign', 'duedate')
-                ->set_callback(function() {
+                ->set_callback(function () {
                     null;
                 });
         }
@@ -116,12 +116,16 @@ class tool_datewatch_generator extends component_generator_base {
      */
     public function shift_dates(string $table, string $field, int $delta) {
         global $DB;
-        $datewatchid = $DB->get_field_sql('SELECT id FROM {tool_datewatch} WHERE tablename = ? AND fieldname = ?',
-            [$table, $field]);
+        $datewatchid = $DB->get_field_sql(
+            'SELECT id FROM {tool_datewatch} WHERE tablename = ? AND fieldname = ?',
+            [$table, $field]
+        );
         $DB->execute("UPDATE {tool_datewatch} SET lastcheck = lastcheck + ? WHERE id = ?", [$delta, $datewatchid]);
-        $DB->execute("UPDATE {".$table."} SET $field = $field + ?", [$delta]);
-        $DB->execute('UPDATE {tool_datewatch_upcoming} SET value = value + ? WHERE datewatchid = ?',
-            [$delta, $datewatchid]);
+        $DB->execute("UPDATE {" . $table . "} SET $field = $field + ?", [$delta]);
+        $DB->execute(
+            'UPDATE {tool_datewatch_upcoming} SET value = value + ? WHERE datewatchid = ?',
+            [$delta, $datewatchid]
+        );
     }
 
     /**
@@ -137,7 +141,7 @@ class tool_datewatch_generator extends component_generator_base {
         $message->name              = 'instantmessage';
         $message->userfrom          = core_user::get_noreply_user();
         $message->userto            = core_user::get_user($userid);
-        $message->subject           = 'Your enrolment will end in '.$daystoend.' days';
+        $message->subject           = 'Your enrolment will end in ' . $daystoend . ' days';
         $message->fullmessage       = 'Hello there';
         $message->fullmessageformat = FORMAT_MARKDOWN;
         $message->fullmessagehtml   = 'Hello there';

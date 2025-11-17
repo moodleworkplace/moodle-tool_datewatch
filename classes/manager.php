@@ -28,9 +28,9 @@ use stdClass;
  */
 class manager {
     /** @var self */
-    static private $manager = null;
+    private static $manager = null;
     /** @var string */
-    static private $key = null;
+    private static $key = null;
     /** @var watcher[] Watchers defined in the plugins callbacks, indexed by hash */
     protected $watchers;
     /** @var \stdClass[] Watchers present in the database */
@@ -84,12 +84,12 @@ class manager {
                     continue;
                 }
                 if (!is_array($compwatchers)) {
-                    debugging('Function '.$functionname.' must return an array of \tool_datewatch\watcher', DEBUG_DEVELOPER);
+                    debugging('Function ' . $functionname . ' must return an array of \tool_datewatch\watcher', DEBUG_DEVELOPER);
                     continue;
                 }
                 foreach ($compwatchers as $idx => $watcher) {
                     if (!$watcher || !is_object($watcher) || !($watcher instanceof watcher)) {
-                        debugging('Function '.$functionname.' returned invalid object at array index '.$idx, DEBUG_DEVELOPER);
+                        debugging('Function ' . $functionname . ' returned invalid object at array index ' . $idx, DEBUG_DEVELOPER);
                         continue;
                     }
                     $watcher->component = $plugintype . '_' . $pluginname;
@@ -158,16 +158,18 @@ class manager {
         $record->lastcheck = di::get(clock::class)->time();
         $record->id = $DB->insert_record('tool_datewatch', $record);
         $sql = "INSERT INTO {tool_datewatch_upcoming} (datewatchid, objectid, value)
-                SELECT :datewatchid, id, ".$record->fieldname."
-                FROM {".$record->tablename."}
-                WHERE ".$record->fieldname." >= :minvalue";
+                SELECT :datewatchid, id, " . $record->fieldname . "
+                FROM {" . $record->tablename . "}
+                WHERE " . $record->fieldname . " >= :minvalue";
         $params = ['datewatchid' => $record->id, 'minvalue' => di::get(clock::class)->time() - $record->maxoffset];
         try {
             $DB->execute($sql, $params);
         } catch (\Exception $ex) {
-            debugging('Invalid watcher definition ' . $record->tablename . ' / ' . $record->fieldname . ': ' .
+            debugging(
+                'Invalid watcher definition ' . $record->tablename . ' / ' . $record->fieldname . ': ' .
                 $ex->getMessage(),
-                DEBUG_DEVELOPER);
+                DEBUG_DEVELOPER
+            );
         }
         return $record;
     }
@@ -215,7 +217,7 @@ class manager {
             if (!$dbwatchers = $this->get_db_watchers_for_table($tablename)) {
                 return;
             }
-            list($sql, $params) = $DB->get_in_or_equal(array_keys($dbwatchers), SQL_PARAMS_NAMED);
+            [$sql, $params] = $DB->get_in_or_equal(array_keys($dbwatchers), SQL_PARAMS_NAMED);
             $select = 'datewatchid ' . $sql . ' AND objectid = :objectid';
             $params += ['objectid' => $tableid];
             if ($event->crud === 'd') {
@@ -241,8 +243,10 @@ class manager {
      */
     protected function prepare_upcoming(string $tablename, int $tableid, \core\event\base $event) {
         $upcoming = [];
-        if (($dbwatchers = $this->get_db_watchers_for_table($tablename)) &&
-                ($record = $event->get_record_snapshot($tablename, $tableid))) {
+        if (
+            ($dbwatchers = $this->get_db_watchers_for_table($tablename)) &&
+                ($record = $event->get_record_snapshot($tablename, $tableid))
+        ) {
             foreach ($dbwatchers as $id => $dbwatcher) {
                 $value = (int)($record->{$dbwatcher->fieldname} ?? 0);
                 if ($value + $dbwatcher->maxoffset >= di::get(clock::class)->time()) {
@@ -289,7 +293,7 @@ class manager {
             $DB->delete_records_list('tool_datewatch_upcoming', 'id', array_keys($todelete));
         }
         if ($toinsert) {
-            $toinsert = array_filter($toinsert, function($element) {
+            $toinsert = array_filter($toinsert, function ($element) {
                 return $element['value'] > di::get(clock::class)->time() - MINSECS;
             });
             if ($toinsert) {
@@ -321,12 +325,12 @@ class manager {
         $notification = new \tool_datewatch\notification($task);
         foreach ($this->dbwatchers as $dbwatcher) {
             // For each watcher registered in the DB find all callbacks and offsets.
-            $watchers = array_filter($this->watchers, function($watcher) use ($dbwatcher) {
+            $watchers = array_filter($this->watchers, function ($watcher) use ($dbwatcher) {
                 return $watcher->callback &&
                     $watcher->fieldname === $dbwatcher->fieldname && $watcher->tablename === $dbwatcher->tablename;
             });
             if ($watchers) {
-                $offsets = array_map(function($watcher) {
+                $offsets = array_map(function ($watcher) {
                     return $watcher->offset;
                 }, $watchers);
 
@@ -351,9 +355,11 @@ class manager {
                                 $callback = $watcher->callback;
                                 $callback($notification);
                             } catch (\Throwable $t) {
-                                debugging('Exception calling callback in the date watcher ' . $watcher .
-                                    ": ".$t->getMessage(),
-                                    DEBUG_DEVELOPER);
+                                debugging(
+                                    'Exception calling callback in the date watcher ' . $watcher .
+                                    ": " . $t->getMessage(),
+                                    DEBUG_DEVELOPER
+                                );
                             }
                         }
                     }

@@ -34,7 +34,6 @@ function xmldb_tool_datewatch_upgrade($oldversion) {
     $dbman = $DB->get_manager();
 
     if ($oldversion < 2021100100) {
-
         // Define table tool_datewatch_upcoming to be dropped.
         $table = new xmldb_table('tool_datewatch_upcoming');
 

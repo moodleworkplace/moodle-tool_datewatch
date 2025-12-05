@@ -2,8 +2,9 @@
 
 ## Unreleased
 ### Changed
-- Updated all time and date handling to use the new Clock API
-- In doing so, all usage of the uopz extension has been removed
+- Updated all time and date handling to use the new Clock API. In doing so, all usage of the uopz
+  extension has been removed
+- Compatibility with latest codechecker standards
 
 ## 5.0.3 - 2025-10-07
 ### Added

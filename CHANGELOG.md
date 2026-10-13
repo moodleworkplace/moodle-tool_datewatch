@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+### Added
+- Added support for Moodle 5.3
+
 ## 5.0.10 - 2026-09-15
 ### Changed
 - Internal CI/CD updates only
